@@ -19,7 +19,8 @@ sqlalchemy = { extras = ["asyncio"], version = "^2.0" }
 aiosqlite = "^0.20.0"
 redis = "^5.0"
 httpx = "^0.27.0"
-typer = { extras = ["all"], version = "^0.12.0" }
+# Typer <0.18 breaks with Click 8.3+ (options ignored → "unexpected extra argument" in CI).
+typer = { extras = ["all"], version = "^0.18.0" }
 anytree = "^2.12.0"
 chromadb = "^0.5.0"
 
