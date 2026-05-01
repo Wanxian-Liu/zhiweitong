@@ -482,20 +482,158 @@ def test_outbound_picking_skill_sandbox() -> None:
     asyncio.run(_run())
 
 
+def test_cycle_count_skill_sandbox() -> None:
+    async def _run() -> None:
+        def factory():
+            from skills.warehouse_logistics.cycle_count import CycleCountSkill
+
+            return CycleCountSkill()
+
+        rep = await run_sandbox(
+            [
+                _envelope(
+                    "wh_cycle_count",
+                    "/智维通/城市乳业/仓储物流/库存盘点",
+                    "cy1",
+                    {"sku": "SKU-CY", "book_qty": 500, "counted_qty": 500},
+                ),
+                _envelope(
+                    "wh_cycle_count",
+                    "/智维通/城市乳业/仓储物流/库存盘点",
+                    "cy1b",
+                    {},
+                ),
+                _envelope(
+                    "wh_cycle_count",
+                    "/智维通/城市乳业/仓储物流/库存盘点",
+                    "cy1c",
+                    {"book_qty": 100, "counted_qty": 95},
+                ),
+                _envelope(
+                    "wh_cycle_count",
+                    "/智维通/城市乳业/仓储物流/库存盘点",
+                    "cy1d",
+                    {"book_qty": 10, "counted_qty": 12},
+                ),
+                _envelope(
+                    "wh_cycle_count",
+                    "/智维通/城市乳业/仓储物流/库存盘点",
+                    "cy1e",
+                    {"book_qty": 1, "counted_qty": 0},
+                ),
+            ],
+            skill_factory=factory,
+            coverage_skill_module="skills.warehouse_logistics.cycle_count",
+        )
+        rv = "cycle-count-variance-v1"
+        assert rep.passed == 5 and rep.failed == 0
+        assert rep.coverage_percent >= 90.0
+        assert rep.cases[0].result is not None
+        assert rep.cases[0].result["rule_version"] == rv
+        assert rep.cases[0].result["variance_qty"] == 0
+        assert rep.cases[0].result["cycle_balanced"] is True
+        assert rep.cases[0].result["summary"]["exception_code"] is None
+        assert rep.cases[1].result["book_qty"] == 0
+        assert rep.cases[1].result["cycle_balanced"] is True
+        assert rep.cases[2].result["variance_qty"] == -5
+        assert rep.cases[2].result["cycle_balanced"] is False
+        assert rep.cases[2].result["summary"]["exception_code"] == "W_CYCLE_COUNT_VARIANCE"
+        assert rep.cases[3].result["variance_qty"] == 2
+        assert rep.cases[3].result["summary"]["exception_code"] == "W_CYCLE_COUNT_VARIANCE"
+        assert rep.cases[4].result["variance_qty"] == -1
+        assert rep.cases[4].result["summary"]["exception_code"] == "W_CYCLE_COUNT_VARIANCE"
+
+    asyncio.run(_run())
+
+
+def test_stock_transfer_skill_sandbox() -> None:
+    async def _run() -> None:
+        def factory():
+            from skills.warehouse_logistics.stock_transfer import StockTransferSkill
+
+            return StockTransferSkill()
+
+        rep = await run_sandbox(
+            [
+                _envelope(
+                    "wh_stock_transfer",
+                    "/智维通/城市乳业/仓储物流/库内调拨",
+                    "tr1",
+                    {
+                        "sku": "SKU-TR",
+                        "from_location": "A-01",
+                        "to_location": "B-02",
+                        "quantity": 30,
+                        "available_at_source": 500,
+                    },
+                ),
+                _envelope(
+                    "wh_stock_transfer",
+                    "/智维通/城市乳业/仓储物流/库内调拨",
+                    "tr1b",
+                    {},
+                ),
+                _envelope(
+                    "wh_stock_transfer",
+                    "/智维通/城市乳业/仓储物流/库内调拨",
+                    "tr1c",
+                    {"quantity": 100, "available_at_source": 40},
+                ),
+                _envelope(
+                    "wh_stock_transfer",
+                    "/智维通/城市乳业/仓储物流/库内调拨",
+                    "tr1d",
+                    {"quantity": 50, "available_at_source": 50},
+                ),
+                _envelope(
+                    "wh_stock_transfer",
+                    "/智维通/城市乳业/仓储物流/库内调拨",
+                    "tr1e",
+                    {"quantity": 1000, "available_at_source": 999},
+                ),
+            ],
+            skill_factory=factory,
+            coverage_skill_module="skills.warehouse_logistics.stock_transfer",
+        )
+        rv = "transfer-qty-availability-v1"
+        assert rep.passed == 5 and rep.failed == 0
+        assert rep.coverage_percent >= 90.0
+        assert rep.cases[0].result is not None
+        assert rep.cases[0].result["rule_version"] == rv
+        assert rep.cases[0].result["shortfall"] == 0
+        assert rep.cases[0].result["transfer_complete"] is True
+        assert rep.cases[0].result["summary"]["exception_code"] is None
+        assert rep.cases[1].result["quantity"] == 0
+        assert rep.cases[1].result["transfer_complete"] is True
+        assert rep.cases[2].result["shortfall"] == 60
+        assert rep.cases[2].result["transfer_complete"] is False
+        assert rep.cases[2].result["summary"]["exception_code"] == "W_TRANSFER_SHORTFALL"
+        assert rep.cases[3].result["shortfall"] == 0
+        assert rep.cases[3].result["summary"]["exception_code"] is None
+        assert rep.cases[4].result["shortfall"] == 1
+        assert rep.cases[4].result["summary"]["exception_code"] == "W_TRANSFER_SHORTFALL"
+
+    asyncio.run(_run())
+
+
 def test_zz_phase2_org_path_exports() -> None:
     """Smoke last: avoid importing department modules before sandbox coverage tests."""
     from skills.finance_center.payable_reconciliation import ORG_PATH as p0
     from skills.finance_center.receivable_reconciliation import ORG_PATH as p1
     from skills.production_center.material_requirement import ORG_PATH as p2
     from skills.production_center.production_scheduling import ORG_PATH as p2b
+    from skills.warehouse_logistics.cycle_count import ORG_PATH as p3a
     from skills.warehouse_logistics.inbound_receiving import ORG_PATH as p3
     from skills.warehouse_logistics.inventory_management import ORG_PATH as p4
     from skills.warehouse_logistics.outbound_picking import ORG_PATH as p5
+    from skills.warehouse_logistics.stock_transfer import ORG_PATH as p5a
 
     assert p0 == "/智维通/城市乳业/财务中心/应付对账"
     assert p1 == "/智维通/城市乳业/财务中心/应收对账"
     assert p2 == "/智维通/城市乳业/生产中心/物料需求"
     assert p2b == "/智维通/城市乳业/生产中心/排产"
     assert p3 == "/智维通/城市乳业/仓储物流/入库验收"
+    assert p3a == "/智维通/城市乳业/仓储物流/库存盘点"
     assert p4 == "/智维通/城市乳业/仓储物流/库存管理"
+    assert p5a == "/智维通/城市乳业/仓储物流/库内调拨"
     assert p5 == "/智维通/城市乳业/仓储物流/出库拣货"

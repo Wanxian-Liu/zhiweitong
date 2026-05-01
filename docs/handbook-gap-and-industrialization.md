@@ -46,7 +46,7 @@
 | 快消板块 | 主管 + 4 叶岗 | 可持续补业务深度与集成测试 |
 | 财务中心 | `receivable_reconciliation`；`payable_reconciliation`；**垂直切片 `finance-ar-ap-v1`**（应收→应付 E2E，见 **`docs/vertical-slices.md`**） | **其余财务岗位**（总账、报表等，以组织树/业务定稿为准） |
 | 生产中心 | `production_scheduling`；**`material_requirement`（物料需求 / 简版 MRP）** | **其余生产岗位**（质检、设备等） |
-| 仓储物流 | `inventory_management`；**`inbound_receiving`（入库验收）**；**`outbound_picking`（出库拣货）** | **其余仓储岗位**（盘点、调拨等） |
+| 仓储物流 | `inventory_management`；`inbound_receiving`；`outbound_picking`；**垂直切片 `warehouse-cycle-transfer-v1`**（库存盘点→库内调拨，见 **`docs/vertical-slices.md`**） | **其余仓储岗位**（全仓盘点策略、跨仓调拨等，以定稿为准） |
 | 总经办 / 治理 | `audit_review`（审计审核岗） | 可与手册外「合规、法务、采购」等扩展 |
 
 **优先级（持续迭代）**：按业务部门分批增加 Skill + 沙盒 + 注册清单；每批上线前「测试、回滚、监控」检查项见 **`docs/ops-runbook.md`** 与 CI。**本表「缺口」列**为产品 backlog，不阻塞 Phase 0–3 已列能力验收。
@@ -57,7 +57,7 @@
 |------|------|----------|
 | **L0** | 岗位契约成立：`command`/`result`、State、沙盒覆盖率门禁通过；领域规则为**可替换**的示意实现 | Phase 2 新增岗默认 **L0** |
 | **L1** | **可演示**：输出带 **规则/契约版本** 与关键中间量；**黄金用例**（脱敏 JSON）≥5 条落在 `tests/` | 垂直切片内优先抬升 |
-| **L2** | **可对账**：与台账/报表 **同粒度** 可核对；异常码、人工兜底与 Runbook 段落齐备 | **主链 `production-inventory-v1`**（排产→…→库存→**出库**）叶岗已达（`summary.l2_reconcile` 等，见 **`docs/ops-runbook.md`**）；其余财务 / 库存岗继续优先抬升 |
+| **L2** | **可对账**：与台账/报表 **同粒度** 可核对；异常码、人工兜底与 Runbook 段落齐备 | **`production-inventory-v1`**、**`finance-ar-ap-v1`**、**`warehouse-cycle-transfer-v1`** 链上叶岗已达 L2（`summary.l2_reconcile` 与 **`docs/ops-runbook.md`** 所列异常码）；其余岗继续按切片抬升 |
 | **L3** | **可生产**：外部系统集成（超时/重试/幂等）、鉴权、监控与 SLO、回滚与灾备对齐 **`docs/ops-runbook.md`** | 按切片分批放行 |
 
 **执行原则**：**垂直切片优先于横向扩岗** —— 选一条端到端业务链（当前主干：**排产 → 物料需求 → 入库验收 → 库存管理 → 出库拣货**），先把链上 Skill **从 L0 抬到 L1/L2**，再复制到其他部门；避免大量 L0 堆叠却无法对账。**主干回归命令**：仓库根 **`make spine`**（见 **`docs/vertical-slices.md`**「官方回归路径」）。

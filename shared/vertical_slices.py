@@ -2,7 +2,8 @@
 
 供集成测试、CLI 与文档引用；**rule_version 须与各 Skill 模块内常量一致**，
 由 ``tests/test_zz_vertical_slice_registry_contract.py``、
-``tests/test_zz_vertical_slice_finance_registry_contract.py`` 校验。
+``tests/test_zz_vertical_slice_finance_registry_contract.py``、
+``tests/test_zz_vertical_slice_wh_registry_contract.py`` 校验。
 
 新增切片时：在此追加 ``VerticalSliceStep``，并同步 ``docs/vertical-slices.md``。
 """
@@ -137,3 +138,47 @@ def finance_ar_ap_org_paths() -> frozenset[str]:
 
 def finance_ar_ap_rule_version_by_org_path() -> dict[str, str]:
     return {s.org_path: s.rule_version for s in FINANCE_AR_AP_CHAIN}
+
+
+# --- 库存盘点 → 库内调拨（仓储补链小闭环；L1 + L2） ---
+
+SLICE_WAREHOUSE_CYCLE_TRANSFER_V1: Final = "warehouse-cycle-transfer-v1"
+
+WH_CYCLE_TRANSFER_CHAIN: Final[tuple[VerticalSliceStep, ...]] = (
+    VerticalSliceStep(
+        0,
+        "/智维通/城市乳业/仓储物流/库存盘点",
+        "wh_cycle_count",
+        "cycle-count-variance-v1",
+        "cycle_count",
+        "skills/warehouse_logistics/cycle_count.py",
+    ),
+    VerticalSliceStep(
+        1,
+        "/智维通/城市乳业/仓储物流/库内调拨",
+        "wh_stock_transfer",
+        "transfer-qty-availability-v1",
+        "transfer_stock",
+        "skills/warehouse_logistics/stock_transfer.py",
+    ),
+)
+
+# 与 ``tests/test_zz_vertical_slice_wh_cycle_transfer_chain`` 固定计划一致。
+WH_CYCLE_TRANSFER_DEFAULT_PARAMS: Final[tuple[dict[str, Any], ...]] = (
+    {"sku": "WH-CT-VS", "book_qty": 500, "counted_qty": 500},
+    {
+        "sku": "WH-CT-VS",
+        "from_location": "A-01",
+        "to_location": "B-02",
+        "quantity": 30,
+        "available_at_source": 500,
+    },
+)
+
+
+def wh_cycle_transfer_org_paths() -> frozenset[str]:
+    return frozenset(s.org_path for s in WH_CYCLE_TRANSFER_CHAIN)
+
+
+def wh_cycle_transfer_rule_version_by_org_path() -> dict[str, str]:
+    return {s.org_path: s.rule_version for s in WH_CYCLE_TRANSFER_CHAIN}

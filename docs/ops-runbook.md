@@ -10,7 +10,7 @@
 ### 主垂直切片 L2（`production-inventory-v1`）
 
 - 链上叶岗（排产 → 物料需求 → 入库验收 → 库存管理 → **出库拣货**）在返回的 **`summary`** 中带 **`l2_reconcile`**：`grain`（对账粒度）、`keys`（与台账对齐的主键）、`basis_qty_field`（主数量字段名）、`ledger_hint`（与人工作业说明）。辅助模块 **`shared/slice_l2.py`**。  
-- **`exception_code`**：`W_MRP_NET_SHORTAGE`（原料净需求大于现存量）、`W_INBOUND_SHORTFALL`（订购与实收短缺）、`W_OUTBOUND_SHORTFALL`（出库需求与实拣短缺）、`I_REORDER_SUGGESTED`（现存量低于阈值，信息类）；**财务岗**：`W_FIN_AR_LINE_MISMATCH`、`W_FIN_AP_LINE_MISMATCH`（应收/应付与收付款笔数不一致的示意规则）；正常为 `null`。  
+- **`exception_code`**：`W_MRP_NET_SHORTAGE`（原料净需求大于现存量）、`W_INBOUND_SHORTFALL`（订购与实收短缺）、`W_OUTBOUND_SHORTFALL`（出库需求与实拣短缺）、`I_REORDER_SUGGESTED`（现存量低于阈值，信息类）；**仓储补链**（盘点→调拨）：`W_CYCLE_COUNT_VARIANCE`（账存与实盘不一致）、`W_TRANSFER_SHORTFALL`（调拨量大于源库位可用量）；**财务岗**：`W_FIN_AR_LINE_MISMATCH`、`W_FIN_AP_LINE_MISMATCH`（应收/应付与收付款笔数不一致的示意规则）；正常为 `null`。  
 - **`manual_handoff`**：非空时建议人工处理的短文案（补料、清点、补货审批等）。  
 - 告警分级与工单对接未内置；可按日志 / `GoalReport` 步骤 `summary` 自行接入。
 

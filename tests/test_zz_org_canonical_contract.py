@@ -23,9 +23,11 @@ _SKILL_MODULES: tuple[str, ...] = (
     "skills.finance_center.payable_reconciliation",
     "skills.production_center.production_scheduling",
     "skills.production_center.material_requirement",
+    "skills.warehouse_logistics.cycle_count",
     "skills.warehouse_logistics.inbound_receiving",
     "skills.warehouse_logistics.inventory_management",
     "skills.warehouse_logistics.outbound_picking",
+    "skills.warehouse_logistics.stock_transfer",
     "skills.general_office.audit_review",
 )
 
