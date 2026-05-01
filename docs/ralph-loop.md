@@ -21,7 +21,7 @@
 2. **改前**：若动总线 / 信封，**先改** **`docs/event_topics.md`**。
 3. **实现**：尽量少扩散；遵守 OpenCLAW 边界（见 `CLAUDE.md`）。
 4. **验证阶梯**：
-   - 开发中：**`make spine`**（供应链 + **财务** + **仓储补链**垂直切片 E2E 与注册表契约，见 **`docs/vertical-slices.md`**）。
+   - 开发中：**`make spine`**（供应链 + **财务** + **仓储 / 生产补链**垂直切片 E2E 与注册表契约，见 **`docs/vertical-slices.md`**）。
    - 合并/提交前：**`make verify`**（全量 `pytest` + **`core/*` ≥85%** + **`skills/quick_consumption/*.py` ≥90%**，与 **`.github/workflows/ci.yml`** 一致）。
 5. **收束**：若行为或运维语义变了，同步 **`docs/ops-runbook.md`** 等交叉文档（见 `CLAUDE.md` 文档列表）。
 
@@ -37,7 +37,7 @@
 
 | 命令 | 用途 |
 |------|------|
-| `make spine` | 官方主干回归（快）：供应链 + 财务 AR/AP + 仓储盘点→调拨 + 契约 |
+| `make spine` | 官方主干回归（快）：多切片 E2E + 注册表契约（见 vertical-slices） |
 | `make test` | 全量 pytest |
 | `make verify` | 全量 pytest + **`core/*` ≥85%** + **`skills/quick_consumption/*.py` ≥90%**（对齐 CI） |
 

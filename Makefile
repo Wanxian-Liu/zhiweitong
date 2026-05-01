@@ -21,6 +21,8 @@ spine:
 		tests/test_zz_vertical_slice_finance_registry_contract.py \
 		tests/test_zz_vertical_slice_wh_cycle_transfer_chain.py \
 		tests/test_zz_vertical_slice_wh_registry_contract.py \
+		tests/test_zz_vertical_slice_production_quality_chain.py \
+		tests/test_zz_vertical_slice_production_quality_registry_contract.py \
 		-q --tb=short
 
 verify:

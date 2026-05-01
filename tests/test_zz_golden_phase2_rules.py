@@ -9,8 +9,10 @@ from __future__ import annotations
 def test_phase2_rule_version_constants() -> None:
     from skills.finance_center.payable_reconciliation import RULE_VERSION as ap_rv
     from skills.finance_center.receivable_reconciliation import RULE_VERSION as ar_rv
+    from skills.production_center.batch_release import RULE_VERSION as br_rv
     from skills.production_center.material_requirement import RULE_VERSION as mrp_rv
     from skills.production_center.production_scheduling import RULE_VERSION as sched_rv
+    from skills.production_center.quality_inspection import RULE_VERSION as qc_rv
     from skills.warehouse_logistics.cycle_count import RULE_VERSION as cy_rv
     from skills.warehouse_logistics.inbound_receiving import RULE_VERSION as in_rv
     from skills.warehouse_logistics.inventory_management import RULE_VERSION as inv_rv
@@ -21,6 +23,8 @@ def test_phase2_rule_version_constants() -> None:
     assert ap_rv == "fin-ap-net-v1"
     assert mrp_rv == "mrp-single-level-v1"
     assert sched_rv == "sched-demand-to-plan-v1"
+    assert qc_rv == "qc-defect-threshold-v1"
+    assert br_rv == "batch-release-gate-v1"
     assert cy_rv == "cycle-count-variance-v1"
     assert in_rv == "inbound-qty-match-v1"
     assert inv_rv == "inv-threshold-v1"
@@ -34,6 +38,15 @@ def test_golden_finance_net_totals_match_sandbox() -> None:
     assert round(280.0 - 50.0, 2) == 230.0
     assert round(10.0 - 10.0, 2) == 0.0
     assert round(20.0 - 20.0, 2) == 0.0
+
+
+def test_golden_production_quality_default_params_match_vertical_slice() -> None:
+    from shared.vertical_slices import PRODUCTION_QUALITY_DEFAULT_PARAMS
+
+    qc, rel = PRODUCTION_QUALITY_DEFAULT_PARAMS
+    assert qc["defect_units"] <= qc["max_defect_units"]
+    assert qc["batch_id"] == rel["batch_id"]
+    assert rel["qc_cleared"] is True
 
 
 def test_golden_wh_cycle_transfer_default_params_match_vertical_slice() -> None:

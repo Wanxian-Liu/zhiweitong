@@ -283,6 +283,129 @@ def test_material_requirement_skill_sandbox() -> None:
     asyncio.run(_run())
 
 
+def test_quality_inspection_skill_sandbox() -> None:
+    async def _run() -> None:
+        def factory():
+            from skills.production_center.quality_inspection import QualityInspectionSkill
+
+            return QualityInspectionSkill()
+
+        rep = await run_sandbox(
+            [
+                _envelope(
+                    "prod_quality_inspection",
+                    "/智维通/城市乳业/生产中心/质量检验",
+                    "qc1",
+                    {"batch_id": "B-QC", "units_inspected": 200, "defect_units": 0, "max_defect_units": 5},
+                ),
+                _envelope(
+                    "prod_quality_inspection",
+                    "/智维通/城市乳业/生产中心/质量检验",
+                    "qc1b",
+                    {},
+                ),
+                _envelope(
+                    "prod_quality_inspection",
+                    "/智维通/城市乳业/生产中心/质量检验",
+                    "qc1c",
+                    {"defect_units": 10, "max_defect_units": 5},
+                ),
+                _envelope(
+                    "prod_quality_inspection",
+                    "/智维通/城市乳业/生产中心/质量检验",
+                    "qc1d",
+                    {"defect_units": 5, "max_defect_units": 5},
+                ),
+                _envelope(
+                    "prod_quality_inspection",
+                    "/智维通/城市乳业/生产中心/质量检验",
+                    "qc1e",
+                    {"defect_units": 0, "max_defect_units": 0},
+                ),
+            ],
+            skill_factory=factory,
+            coverage_skill_module="skills.production_center.quality_inspection",
+        )
+        rv = "qc-defect-threshold-v1"
+        assert rep.passed == 5 and rep.failed == 0
+        assert rep.coverage_percent >= 90.0
+        assert rep.cases[0].result is not None
+        assert rep.cases[0].result["rule_version"] == rv
+        assert rep.cases[0].result["qc_pass"] is True
+        assert rep.cases[0].result["summary"]["exception_code"] is None
+        assert rep.cases[1].result["units_inspected"] == 0
+        assert rep.cases[1].result["qc_pass"] is True
+        assert rep.cases[2].result["qc_pass"] is False
+        assert rep.cases[2].result["summary"]["exception_code"] == "W_QC_BATCH_REJECT"
+        assert rep.cases[3].result["qc_pass"] is True
+        assert rep.cases[3].result["summary"]["exception_code"] is None
+        assert rep.cases[4].result["qc_pass"] is True
+
+    asyncio.run(_run())
+
+
+def test_batch_release_skill_sandbox() -> None:
+    async def _run() -> None:
+        def factory():
+            from skills.production_center.batch_release import BatchReleaseSkill
+
+            return BatchReleaseSkill()
+
+        rep = await run_sandbox(
+            [
+                _envelope(
+                    "prod_batch_release",
+                    "/智维通/城市乳业/生产中心/批次放行",
+                    "br1",
+                    {"batch_id": "B-BR", "qc_cleared": True},
+                ),
+                _envelope(
+                    "prod_batch_release",
+                    "/智维通/城市乳业/生产中心/批次放行",
+                    "br1b",
+                    {},
+                ),
+                _envelope(
+                    "prod_batch_release",
+                    "/智维通/城市乳业/生产中心/批次放行",
+                    "br1c",
+                    {"batch_id": "B-X", "qc_cleared": False},
+                ),
+                _envelope(
+                    "prod_batch_release",
+                    "/智维通/城市乳业/生产中心/批次放行",
+                    "br1d",
+                    {"batch_id": "B-OK", "qc_cleared": True},
+                ),
+                _envelope(
+                    "prod_batch_release",
+                    "/智维通/城市乳业/生产中心/批次放行",
+                    "br1e",
+                    {"qc_cleared": False},
+                ),
+            ],
+            skill_factory=factory,
+            coverage_skill_module="skills.production_center.batch_release",
+        )
+        rv = "batch-release-gate-v1"
+        assert rep.passed == 5 and rep.failed == 0
+        assert rep.coverage_percent >= 90.0
+        assert rep.cases[0].result is not None
+        assert rep.cases[0].result["rule_version"] == rv
+        assert rep.cases[0].result["release_committed"] is True
+        assert rep.cases[0].result["summary"]["exception_code"] is None
+        assert rep.cases[1].result["qc_cleared"] is False
+        assert rep.cases[1].result["release_committed"] is False
+        assert rep.cases[1].result["summary"]["exception_code"] == "W_RELEASE_BLOCKED"
+        assert rep.cases[2].result["release_committed"] is False
+        assert rep.cases[2].result["summary"]["exception_code"] == "W_RELEASE_BLOCKED"
+        assert rep.cases[3].result["release_committed"] is True
+        assert rep.cases[3].result["summary"]["exception_code"] is None
+        assert rep.cases[4].result["summary"]["exception_code"] == "W_RELEASE_BLOCKED"
+
+    asyncio.run(_run())
+
+
 def test_inventory_management_skill_sandbox() -> None:
     async def _run() -> None:
         def factory():
@@ -620,8 +743,10 @@ def test_zz_phase2_org_path_exports() -> None:
     """Smoke last: avoid importing department modules before sandbox coverage tests."""
     from skills.finance_center.payable_reconciliation import ORG_PATH as p0
     from skills.finance_center.receivable_reconciliation import ORG_PATH as p1
+    from skills.production_center.batch_release import ORG_PATH as p2rel
     from skills.production_center.material_requirement import ORG_PATH as p2
     from skills.production_center.production_scheduling import ORG_PATH as p2b
+    from skills.production_center.quality_inspection import ORG_PATH as p2qc
     from skills.warehouse_logistics.cycle_count import ORG_PATH as p3a
     from skills.warehouse_logistics.inbound_receiving import ORG_PATH as p3
     from skills.warehouse_logistics.inventory_management import ORG_PATH as p4
@@ -630,8 +755,10 @@ def test_zz_phase2_org_path_exports() -> None:
 
     assert p0 == "/智维通/城市乳业/财务中心/应付对账"
     assert p1 == "/智维通/城市乳业/财务中心/应收对账"
-    assert p2 == "/智维通/城市乳业/生产中心/物料需求"
     assert p2b == "/智维通/城市乳业/生产中心/排产"
+    assert p2 == "/智维通/城市乳业/生产中心/物料需求"
+    assert p2qc == "/智维通/城市乳业/生产中心/质量检验"
+    assert p2rel == "/智维通/城市乳业/生产中心/批次放行"
     assert p3 == "/智维通/城市乳业/仓储物流/入库验收"
     assert p3a == "/智维通/城市乳业/仓储物流/库存盘点"
     assert p4 == "/智维通/城市乳业/仓储物流/库存管理"

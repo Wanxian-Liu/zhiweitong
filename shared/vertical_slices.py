@@ -3,7 +3,8 @@
 供集成测试、CLI 与文档引用；**rule_version 须与各 Skill 模块内常量一致**，
 由 ``tests/test_zz_vertical_slice_registry_contract.py``、
 ``tests/test_zz_vertical_slice_finance_registry_contract.py``、
-``tests/test_zz_vertical_slice_wh_registry_contract.py`` 校验。
+``tests/test_zz_vertical_slice_wh_registry_contract.py``、
+``tests/test_zz_vertical_slice_production_quality_registry_contract.py`` 校验。
 
 新增切片时：在此追加 ``VerticalSliceStep``，并同步 ``docs/vertical-slices.md``。
 """
@@ -138,6 +139,43 @@ def finance_ar_ap_org_paths() -> frozenset[str]:
 
 def finance_ar_ap_rule_version_by_org_path() -> dict[str, str]:
     return {s.org_path: s.rule_version for s in FINANCE_AR_AP_CHAIN}
+
+
+# --- 质量检验 → 批次放行（生产补链小闭环；L1 + L2） ---
+
+SLICE_PRODUCTION_QUALITY_V1: Final = "production-quality-v1"
+
+PRODUCTION_QUALITY_CHAIN: Final[tuple[VerticalSliceStep, ...]] = (
+    VerticalSliceStep(
+        0,
+        "/智维通/城市乳业/生产中心/质量检验",
+        "prod_quality_inspection",
+        "qc-defect-threshold-v1",
+        "inspect_qc",
+        "skills/production_center/quality_inspection.py",
+    ),
+    VerticalSliceStep(
+        1,
+        "/智维通/城市乳业/生产中心/批次放行",
+        "prod_batch_release",
+        "batch-release-gate-v1",
+        "release_batch",
+        "skills/production_center/batch_release.py",
+    ),
+)
+
+PRODUCTION_QUALITY_DEFAULT_PARAMS: Final[tuple[dict[str, Any], ...]] = (
+    {"batch_id": "PQ-VS", "units_inspected": 200, "defect_units": 0, "max_defect_units": 5},
+    {"batch_id": "PQ-VS", "qc_cleared": True},
+)
+
+
+def production_quality_org_paths() -> frozenset[str]:
+    return frozenset(s.org_path for s in PRODUCTION_QUALITY_CHAIN)
+
+
+def production_quality_rule_version_by_org_path() -> dict[str, str]:
+    return {s.org_path: s.rule_version for s in PRODUCTION_QUALITY_CHAIN}
 
 
 # --- 库存盘点 → 库内调拨（仓储补链小闭环；L1 + L2） ---
