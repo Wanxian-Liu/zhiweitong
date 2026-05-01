@@ -22,6 +22,7 @@ __all__ = [
     "AI_CEO",
     "CoverageError",
     "EventBus",
+    "KnowledgeStore",
     "OrgTree",
     "REQUIRED_PREFIX",
     "SandboxReport",
@@ -35,3 +36,11 @@ __all__ = [
     "run_sandbox",
     "topic_matches",
 ]
+
+
+def __getattr__(name: str):
+    if name == "KnowledgeStore":
+        from core.knowledge_store import KnowledgeStore
+
+        return KnowledgeStore
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
