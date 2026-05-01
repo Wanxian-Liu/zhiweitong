@@ -112,7 +112,7 @@ flowchart LR
 |------|----------|------|------|
 | **Phase A1** | 已完成基线 | `approved` 事件、Promotion 快照、`promote-preview` | 文档 + 测试 |
 | **Phase A2** | 1–2 迭代 | **已实现**：`.github/workflows/ci.yml`（pytest + PR 内变更 `skills/**/*.py` 的 `zhiweitong validate --skip-sandbox`）、`.github/PULL_REQUEST_TEMPLATE.md`、`Makefile` 的 `validate-skills-diff`；建议仓库提交 **`poetry.lock`** 以锁定 CI 依赖 | CI 绿 + 模板字段齐备 |
-| **Phase A3** | 按需 | `promote-apply --dry-run`：输出 unified diff（不写盘）；`--write` 需显式 flag + 备份 | 演练回滚 |
+| **Phase A3** | **已实现** | **`promote-apply`**：默认打印 unified diff；**`--write`** 写入前生成 **`*.promote-backup-<unix_ts>`**；仅替换 `META` 下 **`execution=SkillExecution(...)`** | 测试见 `tests/test_promote_apply.py`；回滚 = 备份文件或 `git checkout` |
 | **Phase B** | 另立项 | 运行时覆盖层 + 配置中心 + 多实例一致性 | 压测与故障注入 |
 
 ---
@@ -129,7 +129,7 @@ flowchart LR
 1. **固化 A2**：在 CI 增加 `zhiweitong validate`（对变更的 `skills/**/*.py` 做路径级 diff 触发）。  
 2. **PR 模板**：链接 `promote-preview` 输出文件 + `doc_id` + `audit_correlation_id`。  
 3. **运维一页纸**：`var/chroma` 与 `State` DB 的备份频率、恢复步骤、`promote-preview` 环境变量说明。  
-4. **（可选）A3**：实现 **dry-run diff** 命令，仍默认不写盘。
+4. ~~**（可选）A3**~~：**`promote-apply`** 已提供默认 diff + 可选 `--write` 与备份。
 
 ---
 

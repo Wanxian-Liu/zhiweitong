@@ -146,7 +146,7 @@ def splice_merged_execution_into_skill_source(src: str, merged: SkillExecution) 
     if old_exec is None:
         msg = (
             "could not find `META = SkillMeta(..., execution=SkillExecution(...), ...)` "
-            "with keyword `execution`"
+            "with keyword `execution` and callee name `SkillExecution` (aliases not supported)"
         )
         raise ValueError(msg)
     old_text = ast.get_source_segment(src, old_exec)

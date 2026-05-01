@@ -9,7 +9,8 @@
 - 进化 / 元数据修订时**必填**：
   - `promotion` 知识库 **doc_id**：
   - 审计 **audit_correlation_id**（若适用）：
-  - `zhiweitong promote-preview` 输出（路径或粘贴要点）：
+  - `zhiweitong promote-preview` 审阅稿（路径或粘贴要点）：
+  - 若已本地落盘：说明是否跑过 **`zhiweitong promote-apply --doc-id …`（dry-run diff）**；**`--write`** 仅在本机执行并随本 PR 提交变更（勿在 CI 上写盘）：
 
 ## 检查项
 

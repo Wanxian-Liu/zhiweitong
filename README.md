@@ -7,3 +7,8 @@
 
 开发入口：`CLAUDE.md`、`docs/event_topics.md`。  
 模块级 Cursor 提示词（Phase 0–3）仍可在记忆殿堂调阅：`~/.openclaw/memory-vault/data/projects/zhihuitong/OpenCLAW-Cursor模块提示词手册.md`（文中目录已改为本仓库名）。
+
+## CLI（摘要）
+
+- `poetry run zhiweitong --help`
+- 进化审阅：`promote-preview`；**落盘**：`promote-apply`（默认仅 unified diff，确认后加 **`--write`**，会先写 `*.promote-backup-<时间戳>`）

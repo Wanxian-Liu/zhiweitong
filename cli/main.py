@@ -313,6 +313,11 @@ def promote_apply_cmd(
         typer.echo(diff, nl=False)
         if not diff.endswith("\n"):
             typer.echo("")
+        typer.secho(
+            f"Dry-run only. To write file + backup: add --write (same --doc-id / paths). Skill: {spath}",
+            fg="cyan",
+            err=True,
+        )
         return
 
     backup = spath.with_name(f"{spath.name}.promote-backup-{int(time.time())}")

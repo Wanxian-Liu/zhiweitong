@@ -183,6 +183,7 @@ def test_promote_apply_dry_run_diff(tmp_path: Path, monkeypatch: pytest.MonkeyPa
     assert result.exit_code == 0, result.stdout + result.stderr
     assert "RULE_FROM_PROMOTION_SNAPSHOT" in result.stdout
     assert "RULE_BEFORE_SPLICE" in result.stdout
+    assert "Dry-run only" in result.stderr and "--write" in result.stderr
     assert skill_path.read_text(encoding="utf-8") == _MINI_SKILL_SRC
 
 

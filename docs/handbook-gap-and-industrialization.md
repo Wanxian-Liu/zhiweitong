@@ -57,8 +57,8 @@
 
 | 小节 | 要求摘要 | 状态 | 优先级 |
 |------|----------|------|--------|
-| 3.1 | Typer：`create-skill`、`batch-register`、`validate` | 已实现 + 测试；**`promote-preview`**；**CI**：`.github/workflows/ci.yml`（pytest + PR 内变更 Skill 的 `validate --skip-sandbox`）、PR 模板 | P2：提交 `poetry.lock`；GitLab CI 若需要可另加 |
-| 3.2 | EvolutionEngine、`/system/errors`、阈值、LLM 建议、沙盒、**审核岗**、知识库案例、**通过后更新元数据与版本** | 引擎 + 审计 + Gateway；`approved` → **`EvolutionPromotion`** 幂等写入知识库 + State；**真 LLM 优化**为占位 | **P1**：从快照 **生成源码补丁 / 注册表覆盖**；**P0**：多实例下 State 去重一致性（现依赖单库 SQLite） |
+| 3.1 | Typer：`create-skill`、`batch-register`、`validate` | 已实现 + 测试；**`promote-preview`**、**`promote-apply`**（diff / `--write`+备份）；**CI**：`.github/workflows/ci.yml`（pytest + PR 内变更 Skill 的 `validate --skip-sandbox`）、PR 模板；**`poetry.lock`** 已纳入仓库 | P2：GitLab CI 若需要可另加 |
+| 3.2 | EvolutionEngine、`/system/errors`、阈值、LLM 建议、沙盒、**审核岗**、知识库案例、**通过后更新元数据与版本** | 引擎 + 审计 + Gateway；`approved` → **`EvolutionPromotion`** 幂等写入知识库 + State；**真 LLM 优化**为占位；**execution 级源码落地**见 **`promote-apply`** | **P1**：**注册表覆盖**（模式 B）等；**P0**：多实例下 State 去重一致性（现依赖单库 SQLite） |
 
 ---
 
