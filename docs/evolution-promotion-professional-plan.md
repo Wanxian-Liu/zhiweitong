@@ -128,7 +128,7 @@ flowchart LR
 
 1. **固化 A2**：在 CI 增加 `zhiweitong validate`（对变更的 `skills/**/*.py` 做路径级 diff 触发）。  
 2. **PR 模板**：链接 `promote-preview` 输出文件 + `doc_id` + `audit_correlation_id`。  
-3. **运维一页纸**：`var/chroma` 与 `State` DB 的备份频率、恢复步骤、`promote-preview` 环境变量说明。  
+3. ~~**运维一页纸**~~：见 **`docs/ops-runbook.md`**（Chroma / SQLite 路径、`ZHIWEITONG_*`、备份与恢复、`promote-*` 注意项）。  
 4. ~~**（可选）A3**~~：**`promote-apply`** 已提供默认 diff + 可选 `--write` 与备份。
 
 ---
