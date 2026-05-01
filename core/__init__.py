@@ -16,6 +16,7 @@ from core.sandbox import (
     StubStateManager,
     run_sandbox,
 )
+from core.skill_registry import SkillRegistry
 from core.state_manager import StateManager
 
 __all__ = [
@@ -27,6 +28,7 @@ __all__ = [
     "REQUIRED_PREFIX",
     "SandboxReport",
     "SkillBase",
+    "SkillRegistry",
     "SkillMeta",
     "StateManager",
     "StubEventBus",
