@@ -252,14 +252,20 @@ class Orchestrator:
                 planner_error=planner_err,
             )
 
-        pending: dict[str, asyncio.Future[dict[str, Any]]] = {}
+        pending: dict[str, tuple[asyncio.Future[dict[str, Any]], str]] = {}
 
         async def on_result(topic: str, event: dict[str, Any]) -> None:
             if not str(topic).endswith("/result"):
                 return
             cid = str(event.get("correlation_id", ""))
-            fut = pending.get(cid)
-            if fut is not None and not fut.done():
+            skill_id = str(event.get("skill_id", ""))
+            pending_item = pending.get(cid)
+            if pending_item is None:
+                return
+            fut, expected_skill_id = pending_item
+            if skill_id != expected_skill_id:
+                return
+            if not fut.done():
                 fut.set_result(dict(event))
 
         sub_id = await self._bus.subscribe("/智维通/城市乳业*", on_result)
@@ -289,7 +295,7 @@ class Orchestrator:
 
                 loop = asyncio.get_running_loop()
                 fut: asyncio.Future[dict[str, Any]] = loop.create_future()
-                pending[cid] = fut
+                pending[cid] = (fut, skill.meta.skill_id)
                 t0 = time.perf_counter()
                 cmd_topic = command_topic(skill.meta.org_path)
                 await self._bus.publish(cmd_topic, env.model_dump())
