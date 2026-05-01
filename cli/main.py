@@ -31,6 +31,7 @@ from cli.generators import (
     render_test_skeleton,
     skill_id_to_class_name,
 )
+from config.settings import load_repo_dotenv
 from core.knowledge_store import KnowledgeStore
 from core.sandbox import SandboxReport, run_sandbox
 from core.skill_base import SkillBase
@@ -370,6 +371,7 @@ def validate_cmd(
 
 
 def run() -> None:
+    load_repo_dotenv()
     app()
 
 

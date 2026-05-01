@@ -1,13 +1,27 @@
 """Load settings from process environment.
 
-变量清单与说明见仓库根目录 ``.env.example`` 与 ``docs/ops-runbook.md``。
-（未内置自动加载 ``.env``；由 shell/编排平台注入，或自行 ``source``。）
+启动时从仓库根目录的 ``.env`` 注入变量（不覆盖已存在的环境变量），再读取配置。
+清单与说明：``.env.example``、``docs/ops-runbook.md``。
+
+测试套件默认设置 ``ZHIWEITONG_SKIP_DOTENV=1``（见 ``tests/conftest.py``），避免本机 ``.env`` 干扰断言。
 """
 
 from __future__ import annotations
 
 import os
 from dataclasses import dataclass
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def load_repo_dotenv() -> None:
+    """Load ``<repo>/.env`` if present. Existing ``os.environ`` entries win (``override=False``)."""
+    if os.environ.get("ZHIWEITONG_SKIP_DOTENV") == "1":
+        return
+    load_dotenv(REPO_ROOT / ".env", override=False)
 
 
 def _get(key: str, default: str = "") -> str:
@@ -23,6 +37,7 @@ class Settings:
 
 
 def load_settings() -> Settings:
+    load_repo_dotenv()
     return Settings(
         database_url=_get(
             "ZHIWEITONG_DATABASE_URL",

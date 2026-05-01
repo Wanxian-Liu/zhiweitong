@@ -14,7 +14,7 @@
 
 ## 2. 环境变量（摘要）
 
-本地可复制 **`.env.example`** → **`.env`**，按注释取消注释并填写；运行时仍依赖进程环境（若未使用 shell 自动 `export`，可用 `set -a; source .env; set +a` 或部署平台注入）。
+本地可复制 **`.env.example`** → **`.env`**，按注释取消注释并填写。**`load_settings()`** 与 **`zhiweitong` CLI** 会从仓库根目录加载 `.env`（**不覆盖**已在进程里的变量）。运行 **pytest** 时默认 **`ZHIWEITONG_SKIP_DOTENV=1`**，以免本机 `.env` 打乱测试；仍可用 `export` / 编排平台注入变量。
 
 | 变量 | 用途 | 缺省 |
 |------|------|------|
