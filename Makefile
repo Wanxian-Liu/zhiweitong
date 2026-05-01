@@ -1,6 +1,8 @@
 # 本地对齐 CI：测试 +（可选）对当前分支相对 BASE 的 Skill 做 validate
 # 进化：`promote-preview` / `promote-apply`（默认 diff；WRITE=1 写盘 + 备份）
-.PHONY: test install validate-skills-diff promote-preview promote-apply
+# 主干回归：make spine — 垂直切片 E2E + 注册表契约（见 docs/vertical-slices.md）
+# 提交前：make verify — 全量 pytest + core 覆盖率门禁（对齐 CI，见 docs/ralph-loop.md）
+.PHONY: test spine verify install validate-skills-diff promote-preview promote-apply
 
 PYTHON ?= python3
 POETRY ?= poetry
@@ -10,6 +12,20 @@ install:
 
 test:
 	$(POETRY) run pytest tests/ -q --tb=short
+
+spine:
+	$(POETRY) run pytest \
+		tests/test_zz_vertical_slice_production_inventory_chain.py \
+		tests/test_zz_vertical_slice_registry_contract.py \
+		tests/test_zz_vertical_slice_finance_ar_ap_chain.py \
+		tests/test_zz_vertical_slice_finance_registry_contract.py \
+		-q --tb=short
+
+verify:
+	$(POETRY) run pytest tests/ -q --tb=short
+	$(POETRY) run coverage run -m pytest tests/ -q --tb=short
+	$(POETRY) run coverage report --include='core/*' --fail-under=85 --precision=1
+	$(POETRY) run coverage report --include='skills/quick_consumption/*.py' --fail-under=90 --precision=1
 
 # 用法: make validate-skills-diff BASE=origin/main
 # 未设置 BASE 时跳过（避免误跑全仓库）

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import tempfile
 from typing import Any
 
@@ -10,6 +11,7 @@ import pytest
 
 from core.event_bus import EventBus
 from core.evolution_promotion import EvolutionPromotion, _promotion_entity_id
+from core.observability import ZT_COMPONENT, ZT_CORRELATION_ID, ZT_OUTCOME
 from core.state_manager import StateManager
 from shared.models import EventEnvelope
 from shared.system_topics import EVOLUTION_APPROVED
@@ -114,6 +116,50 @@ def test_evolution_promotion_ignores_non_audit_payload(tmp_db_url: str) -> None:
         await asyncio.sleep(0.1)
         assert ks.stores == []
 
+        await prom.stop()
+        await bus.aclose()
+        await sm.aclose()
+
+    asyncio.run(_run())
+
+
+def test_evolution_promotion_missing_ids_warning_has_zt(
+    tmp_db_url: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    async def _run() -> None:
+        bus = EventBus()
+        sm = StateManager(database_url=tmp_db_url)
+        await sm.init_schema()
+        ks = RecordingKnowledge()
+        prom = EvolutionPromotion(bus, ks, sm)
+        await prom.start()
+        with caplog.at_level(logging.WARNING, logger="core.evolution_promotion"):
+            await bus.publish(
+                EVOLUTION_APPROVED,
+                EventEnvelope(
+                    correlation_id="miss-1",
+                    org_path="/智维通/城市乳业/总经办/审计审核岗",
+                    skill_id="gov_audit_review",
+                    payload={
+                        "kind": "audit_decision",
+                        "decision": "approved",
+                        "audit_correlation_id": "",
+                        "target_skill_id": "leaf_qc",
+                        "knowledge_doc_id": "",
+                    },
+                ).model_dump(),
+            )
+            await asyncio.sleep(0.15)
+        assert ks.stores == []
+        bad = [
+            r
+            for r in caplog.records
+            if getattr(r, ZT_OUTCOME, None) == "skip_missing_ids"
+            and getattr(r, ZT_COMPONENT, None) == "evolution_promotion"
+        ]
+        assert len(bad) == 1
+        assert getattr(bad[0], ZT_CORRELATION_ID, None) == "miss-1"
         await prom.stop()
         await bus.aclose()
         await sm.aclose()

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any
 
 import pytest
+
+from core.observability import ZT_COMPONENT, ZT_CORRELATION_ID, ZT_OUTCOME, ZT_SKILL_ID
 
 from core.event_bus import EventBus
 from core.evolution import (
@@ -199,6 +202,54 @@ def test_evolution_custom_optimizer_patch_in_review() -> None:
                 break
         assert len(reviews) == 1
         assert reviews[0]["payload"]["proposed_execution_patch"]["token_budget"] == 999
+        await eng.stop()
+        await bus.aclose()
+
+    asyncio.run(_run())
+
+
+def test_evolution_unknown_skill_warning_has_zt(caplog: pytest.LogCaptureFixture) -> None:
+    """未注册 skill 仍可走知识库与审阅发布，但沙盒跳过；WARNING 带 zt_*。"""
+
+    async def _run() -> None:
+        bus = EventBus()
+        reg = SkillRegistry()
+        reviews: list[dict[str, Any]] = []
+
+        async def on_rev(topic: str, ev: dict[str, Any]) -> None:
+            if topic == EVOLUTION_REVIEW:
+                reviews.append(ev)
+
+        await bus.subscribe(EVOLUTION_REVIEW, on_rev)
+        eng = EvolutionEngine(
+            bus=bus,
+            knowledge=_DummyKnowledgeStore(),
+            registry=reg,
+            thresholds=EvolutionThresholds(min_errors_in_window=1, window_sec=60.0),
+            review_cooldown_sec=1.0,
+        )
+        await eng.start()
+        with caplog.at_level(logging.WARNING, logger="core.evolution"):
+            await bus.publish(
+                SYSTEM_ERRORS,
+                EventEnvelope(
+                    correlation_id="unk-1",
+                    org_path="/智维通/城市乳业/快消板块",
+                    skill_id="not_in_registry",
+                    payload={"error": "e", "latency_ms": 1.0},
+                ).model_dump(),
+            )
+            await asyncio.sleep(0.35)
+        assert len(reviews) == 1
+        warn_recs = [
+            r
+            for r in caplog.records
+            if getattr(r, ZT_OUTCOME, None) == "skill_not_in_registry"
+            and getattr(r, ZT_COMPONENT, None) == "evolution_engine"
+        ]
+        assert len(warn_recs) == 1
+        assert getattr(warn_recs[0], ZT_SKILL_ID, None) == "not_in_registry"
+        assert getattr(warn_recs[0], ZT_CORRELATION_ID, None) == "unk-1"
         await eng.stop()
         await bus.aclose()
 

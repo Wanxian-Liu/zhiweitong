@@ -1,7 +1,8 @@
 """Async event bus: asyncio.Queue transport, wildcard subscribe, isolated subscriber errors.
 
-Replace transport with Redis Pub/Sub later by swapping the queue + dispatch implementation;
-keep ``publish`` / ``subscribe`` / ``unsubscribe`` signatures stable.
+跨进程部署时使用 :class:`core.redis_event_bus.RedisEventBus`（单频道 JSON + 本地 ``topic_matches``）；
+由 :func:`core.event_bus_factory.create_event_bus` 按 ``ZHIWEITONG_EVENT_BUS_BACKEND`` 选择实现。
+``publish`` / ``subscribe`` / ``unsubscribe`` / ``aclose`` 签名保持稳定。
 """
 
 from __future__ import annotations
@@ -9,9 +10,12 @@ from __future__ import annotations
 import asyncio
 import inspect
 import logging
+import time
 import uuid
 from collections.abc import Awaitable, Callable
 from typing import Any
+
+from core.observability import zt_log_extra
 
 logger = logging.getLogger(__name__)
 
@@ -129,14 +133,26 @@ class EventBus:
             for sub in list(self._subs.values()):
                 if not topic_matches(sub.pattern, topic):
                     continue
+                t_cb = time.perf_counter()
                 try:
                     await sub.callback(topic, event)
                 except Exception:
+                    dt_cb = (time.perf_counter() - t_cb) * 1000.0
+                    _cid = event.get("correlation_id") if isinstance(event, dict) else None
                     logger.exception(
-                        "subscriber failed topic=%s pattern=%s sub_id=%s",
+                        "subscriber failed topic=%s pattern=%s sub_id=%s duration_ms=%.1f",
                         topic,
                         sub.pattern,
                         sub.subscription_id,
+                        dt_cb,
+                        extra=zt_log_extra(
+                            component="event_bus",
+                            outcome="subscriber_failed",
+                            duration_ms=dt_cb,
+                            subscription_id=sub.subscription_id,
+                            topic=topic,
+                            correlation_id=str(_cid) if _cid is not None else None,
+                        ),
                     )
 
     async def __aenter__(self) -> EventBus:

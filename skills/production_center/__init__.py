@@ -4,10 +4,14 @@ from __future__ import annotations
 
 from typing import Any
 
-__all__ = ["ProductionSchedulingSkill"]
+__all__ = ["MaterialRequirementSkill", "ProductionSchedulingSkill"]
 
 
 def __getattr__(name: str) -> Any:
+    if name == "MaterialRequirementSkill":
+        from skills.production_center.material_requirement import MaterialRequirementSkill
+
+        return MaterialRequirementSkill
     if name == "ProductionSchedulingSkill":
         from skills.production_center.production_scheduling import ProductionSchedulingSkill
 

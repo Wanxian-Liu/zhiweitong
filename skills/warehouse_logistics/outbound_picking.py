@@ -1,8 +1,7 @@
-"""排产 Skill — 生产中心."""
+"""出库拣货 Skill — 仓储物流."""
 
 from __future__ import annotations
 
-import uuid
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -21,12 +20,12 @@ from core.skill_base import (
 from shared.models import EventEnvelope
 from shared.slice_l2 import l2_reconcile_block
 
-ORG_PATH = "/智维通/城市乳业/生产中心/排产"
-SKILL_ID = "prod_production_scheduling"
-RULE_VERSION = "sched-demand-to-plan-v1"
+ORG_PATH = "/智维通/城市乳业/仓储物流/出库拣货"
+SKILL_ID = "wh_outbound_picking"
+RULE_VERSION = "outbound-pick-qty-v1"
 
 
-class ProductionSchedulingInput(BaseModel):
+class OutboundPickingInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     schema_version: str = "1"
@@ -36,41 +35,43 @@ class ProductionSchedulingInput(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
 
 
-class ProductionSchedulingOutput(BaseModel):
+class OutboundPickingOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ok: bool
     rule_version: str
-    batch_id: str
-    planned_units: int
-    line_id: str
+    sku: str
+    requested_qty: int
+    picked_qty: int
+    shortfall: int
+    pick_complete: bool
     summary: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None
 
 
-class ProductionSchedulingSkill(SkillBase):
-    """根据需求数量生成批次与产线分配（模拟）。"""
+class OutboundPickingSkill(SkillBase):
+    """模拟出库单需求件数与实拣件数比对，计算未拣足与是否可封单。"""
 
     META = SkillMeta(
         skill_id=SKILL_ID,
-        name="排产岗",
+        name="出库拣货岗",
         org_path=ORG_PATH,
         supervisor="ai_ceo",
         interface=SkillInterface(
-            input_schema=json_schema(ProductionSchedulingInput),
-            output_schema=json_schema(ProductionSchedulingOutput),
+            input_schema=json_schema(OutboundPickingInput),
+            output_schema=json_schema(OutboundPickingOutput),
             required_input_fields=["correlation_id"],
-            optional_input_fields=["payload.demand_units", "payload.line_id"],
-            error_codes=["E_PROD_INVALID_PAYLOAD"],
+            optional_input_fields=["payload.sku", "payload.requested_qty", "payload.picked_qty"],
+            error_codes=["E_WH_OUTBOUND_INVALID_PAYLOAD", "W_OUTBOUND_SHORTFALL"],
         ),
         execution=SkillExecution(
-            workflow_steps=["read_demand", "check_capacity", "allocate_line", "persist_plan", "publish_result"],
-            decision_rule="planned_units = demand_units or 0; batch_id deterministic from correlation_id",
-            token_budget=1500,
+            workflow_steps=["resolve_wave", "locate_sku", "pick_confirm", "persist", "publish_result"],
+            decision_rule="shortfall = max(0, requested_qty - picked_qty); pick_complete when picked_qty >= requested_qty",
+            token_budget=1200,
             api_call_budget=0,
         ),
         compliance=SkillCompliance(forbidden_operations=["direct_skill_call"], audit_enabled=True),
-        knowledge=SkillKnowledge(tags=["production", "scheduling", "manufacturing"]),
+        knowledge=SkillKnowledge(tags=["warehouse", "outbound", "picking", "logistics"]),
     )
 
     def __init__(self, event_bus: Any | None = None, state_manager: Any | None = None) -> None:
@@ -85,36 +86,45 @@ class ProductionSchedulingSkill(SkillBase):
     async def execute(self, event: dict[str, Any]) -> dict[str, Any]:
         if self._bus is None or self._state is None:
             raise RuntimeError("inject event_bus/state_manager or call attach_sandbox before execute")
-        req = ProductionSchedulingInput.model_validate(event)
+        req = OutboundPickingInput.model_validate(event)
         payload = effective_skill_payload(dict(req.payload))
-        demand = int(payload.get("demand_units", 0))
-        line_id = str(payload.get("line_id", "LINE-A1"))
-        batch_id = f"BATCH-{uuid.uuid5(uuid.NAMESPACE_DNS, req.correlation_id).hex[:10].upper()}"
-        planned_units = max(demand, 0)
+        sku = str(payload.get("sku", "SKU-DEFAULT"))
+        requested_qty = int(payload.get("requested_qty", 0))
+        picked_qty = int(payload.get("picked_qty", 0))
+        shortfall = max(0, requested_qty - picked_qty)
+        pick_complete = picked_qty >= requested_qty
 
         summary = {
             "rule_version": RULE_VERSION,
-            "batch_id": batch_id,
-            "planned_units": planned_units,
-            "line_id": line_id,
+            "sku": sku,
+            "requested_qty": requested_qty,
+            "picked_qty": picked_qty,
+            "shortfall": shortfall,
+            "pick_complete": pick_complete,
             "l2_reconcile": l2_reconcile_block(
-                "production_plan_snapshot",
-                {"batch_id": batch_id, "line_id": line_id},
-                "planned_units",
-                "与排产/MES 台账按 batch_id + line_id 核对计划产量（planned_units）。",
+                "warehouse_pick_line",
+                {"sku": sku},
+                "picked_qty",
+                "实拣 picked_qty 与出库单 requested_qty 核对；shortfall>0 时未完成拣货。",
             ),
-            "exception_code": None,
-            "manual_handoff": None,
+            "exception_code": "W_OUTBOUND_SHORTFALL" if shortfall > 0 else None,
+            "manual_handoff": (
+                "拣货短少；补拣或调整出库单数量后重试。"
+                if shortfall > 0
+                else None
+            ),
         }
         entity = f"{self.meta.org_path}/{self.meta.skill_id}/{req.correlation_id}"
         await self._state.save_state(entity, summary, self.meta.skill_id)
 
-        out = ProductionSchedulingOutput(
+        out = OutboundPickingOutput(
             ok=True,
             rule_version=RULE_VERSION,
-            batch_id=batch_id,
-            planned_units=planned_units,
-            line_id=line_id,
+            sku=sku,
+            requested_qty=requested_qty,
+            picked_qty=picked_qty,
+            shortfall=shortfall,
+            pick_complete=pick_complete,
             summary=summary,
         ).model_dump()
         envelope = EventEnvelope(

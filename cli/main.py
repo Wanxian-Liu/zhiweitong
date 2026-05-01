@@ -32,6 +32,7 @@ from cli.generators import (
     skill_id_to_class_name,
 )
 from config.settings import load_repo_dotenv
+from core.observability import configure_zhiweitong_logging
 from core.knowledge_store import KnowledgeStore
 from core.sandbox import SandboxReport, run_sandbox
 from core.skill_base import SkillBase
@@ -372,6 +373,7 @@ def validate_cmd(
 
 def run() -> None:
     load_repo_dotenv()
+    configure_zhiweitong_logging()
     app()
 
 

@@ -1,4 +1,4 @@
-"""应收对账 Skill — 财务中心."""
+"""应付对账 Skill — 财务中心."""
 
 from __future__ import annotations
 
@@ -20,12 +20,12 @@ from core.skill_base import (
 from shared.models import EventEnvelope
 from shared.slice_l2 import l2_reconcile_block
 
-ORG_PATH = "/智维通/城市乳业/财务中心/应收对账"
-SKILL_ID = "fin_receivable_reconciliation"
-RULE_VERSION = "fin-ar-net-v1"
+ORG_PATH = "/智维通/城市乳业/财务中心/应付对账"
+SKILL_ID = "fin_payable_reconciliation"
+RULE_VERSION = "fin-ap-net-v1"
 
 
-class ReceivableReconciliationInput(BaseModel):
+class PayableReconciliationInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     schema_version: str = "1"
@@ -35,40 +35,40 @@ class ReceivableReconciliationInput(BaseModel):
     payload: dict[str, Any] = Field(default_factory=dict)
 
 
-class ReceivableReconciliationOutput(BaseModel):
+class PayableReconciliationOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ok: bool
     rule_version: str
-    receivable_total: float
+    payable_total: float
     discrepancy_count: int
     summary: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None
 
 
-class ReceivableReconciliationSkill(SkillBase):
-    """模拟应收汇总与差异计数；状态入 StateManager，结果经 EventBus 发布。"""
+class PayableReconciliationSkill(SkillBase):
+    """模拟应付（对供应商）未结余额与单据条数差异；状态入 StateManager，结果经 EventBus 发布。"""
 
     META = SkillMeta(
         skill_id=SKILL_ID,
-        name="应收对账岗",
+        name="应付对账岗",
         org_path=ORG_PATH,
         supervisor="ai_ceo",
         interface=SkillInterface(
-            input_schema=json_schema(ReceivableReconciliationInput),
-            output_schema=json_schema(ReceivableReconciliationOutput),
+            input_schema=json_schema(PayableReconciliationInput),
+            output_schema=json_schema(PayableReconciliationOutput),
             required_input_fields=["correlation_id"],
-            optional_input_fields=["payload.invoices", "payload.payments"],
-            error_codes=["E_FIN_INVALID_PAYLOAD", "W_FIN_AR_LINE_MISMATCH"],
+            optional_input_fields=["payload.bills", "payload.payments"],
+            error_codes=["E_FIN_PAYABLE_INVALID_PAYLOAD", "W_FIN_AP_LINE_MISMATCH"],
         ),
         execution=SkillExecution(
-            workflow_steps=["ingest_documents", "match_invoices", "compute_totals", "persist", "publish_result"],
-            decision_rule="receivable_total = sum(invoices) - sum(payments); discrepancy_count = |invoices| mismatch heuristic",
+            workflow_steps=["ingest_bills", "match_payments", "compute_payable", "persist", "publish_result"],
+            decision_rule="payable_total = sum(bills) - sum(payments); discrepancy_count from |bills| vs |payments|",
             token_budget=2000,
             api_call_budget=0,
         ),
         compliance=SkillCompliance(forbidden_operations=["direct_skill_call"], audit_enabled=True),
-        knowledge=SkillKnowledge(tags=["finance", "receivable", "reconciliation"]),
+        knowledge=SkillKnowledge(tags=["finance", "payable", "reconciliation", "ap"]),
     )
 
     def __init__(self, event_bus: Any | None = None, state_manager: Any | None = None) -> None:
@@ -84,32 +84,32 @@ class ReceivableReconciliationSkill(SkillBase):
     async def execute(self, event: dict[str, Any]) -> dict[str, Any]:
         if self._bus is None or self._state is None:
             raise RuntimeError("inject event_bus/state_manager or call attach_sandbox before execute")
-        req = ReceivableReconciliationInput.model_validate(event)
+        req = PayableReconciliationInput.model_validate(event)
         payload = effective_skill_payload(dict(req.payload))
-        invoices = payload.get("invoices")
+        bills = payload.get("bills")
         payments = payload.get("payments")
-        inv_sum = float(sum(float(x) for x in invoices)) if isinstance(invoices, list) else 0.0
+        bill_sum = float(sum(float(x) for x in bills)) if isinstance(bills, list) else 0.0
         pay_sum = float(sum(float(x) for x in payments)) if isinstance(payments, list) else 0.0
-        receivable_total = round(inv_sum - pay_sum, 2)
+        payable_total = round(bill_sum - pay_sum, 2)
         discrepancy_count = 0
-        if isinstance(invoices, list) and isinstance(payments, list) and len(invoices) != len(payments):
-            discrepancy_count = abs(len(invoices) - len(payments))
+        if isinstance(bills, list) and isinstance(payments, list) and len(bills) != len(payments):
+            discrepancy_count = abs(len(bills) - len(payments))
 
         summary = {
             "rule_version": RULE_VERSION,
-            "receivable_total": receivable_total,
+            "payable_total": payable_total,
             "discrepancy_count": discrepancy_count,
             "l2_reconcile": l2_reconcile_block(
-                "ar_net_snapshot",
+                "ap_net_snapshot",
                 {},
-                "receivable_total",
-                "应收净额 = ∑发票 − ∑收款；与总账/AR 子账同币种、同截点核对。",
+                "payable_total",
+                "应付净额 = ∑应付单 − ∑付款；与总账/AP 子账同币种、同截点核对。",
             ),
             "exception_code": (
-                "W_FIN_AR_LINE_MISMATCH" if discrepancy_count > 0 else None
+                "W_FIN_AP_LINE_MISMATCH" if discrepancy_count > 0 else None
             ),
             "manual_handoff": (
-                "发票与收款笔数不一致或需逐笔匹配时人工复核。"
+                "应付与付款笔数不一致或需逐笔匹配时人工复核。"
                 if discrepancy_count > 0
                 else None
             ),
@@ -117,13 +117,13 @@ class ReceivableReconciliationSkill(SkillBase):
         entity = f"{self.meta.org_path}/{self.meta.skill_id}/{req.correlation_id}"
         await self._state.save_state(
             entity,
-            {"receivable_total": receivable_total, "discrepancy_count": discrepancy_count},
+            {"payable_total": payable_total, "discrepancy_count": discrepancy_count},
             self.meta.skill_id,
         )
-        out = ReceivableReconciliationOutput(
+        out = PayableReconciliationOutput(
             ok=True,
             rule_version=RULE_VERSION,
-            receivable_total=receivable_total,
+            payable_total=payable_total,
             discrepancy_count=discrepancy_count,
             summary=summary,
         ).model_dump()

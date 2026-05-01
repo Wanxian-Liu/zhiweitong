@@ -23,6 +23,17 @@
 - 示例：订阅 `/智维通/城市乳业/*` 下所有 `result`，用于聚合岗（细则与 `event_bus` 实现同步）。
 - **匹配规则**（见 `core/event_bus.topic_matches`）：精确相等；或模式以单个尾部 `*` 结尾时按前缀匹配；`"*"` 匹配任意 topic；其余 `*` 走 `fnmatch`。
 
+## 垂直切片与叶岗映射
+
+端到端链路上的 `org_path` / `skill_id` / `rule_version` / 计划动作见 **`docs/vertical-slices.md`** 与 **`shared/vertical_slices.py`**（与集成测试契约同步）。
+
+## Redis 传输（多实例）
+
+- **开关**：`ZHIWEITONG_EVENT_BUS_BACKEND=redis`，并设置非空的 `ZHIWEITONG_REDIS_URL`。
+- **频道**：`ZHIWEITONG_REDIS_BUS_CHANNEL`（默认 `zhiweitong:events`）；所有进程须一致。
+- **载荷**：单条 Pub/Sub 消息为 JSON 字符串 `{"t":"<topic>","e":{...}}`；订阅侧仍用与内存总线相同的 `topic_matches` 规则过滤。
+- **实现**：`core/redis_event_bus.py`；构造入口 `core/event_bus_factory.py` 的 `create_event_bus`。
+
 ## JSON 信封（建议）
 
 每条 `event: dict` 至少包含：

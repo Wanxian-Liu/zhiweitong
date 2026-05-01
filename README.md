@@ -9,6 +9,10 @@
 环境变量骨架：**`.env.example`**（复制为 `.env` 后填写，勿提交 `.env`）。  
 模块级 Cursor 提示词（Phase 0–3）仍可在记忆殿堂调阅：`~/.openclaw/memory-vault/data/projects/zhihuitong/OpenCLAW-Cursor模块提示词手册.md`（文中目录已改为本仓库名）。
 
+## 主干回归（官方垂直切片）
+
+改 **core / 总线 / 链上 Skill** 时，先在仓库根执行 **`make spine`**（无 LLM、无 Redis）：端到端 **排产 → 物料 → 入库 → 库存** + 与 `shared/vertical_slices.py` 的契约对齐。命令与期望说明见 **`docs/vertical-slices.md`**「官方回归路径」。合并前建议 **`make verify`**（全量测试 + `core/*` 覆盖率 ≥85%，对齐 CI）；节奏说明见 **`docs/ralph-loop.md`**。
+
 ## CLI（摘要）
 
 - `poetry run zhiweitong --help`

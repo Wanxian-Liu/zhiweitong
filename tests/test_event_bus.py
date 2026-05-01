@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any
 
 import pytest
 
 from core.event_bus import EventBus, topic_matches
+from core.observability import ZT_COMPONENT, ZT_CORRELATION_ID, ZT_DURATION_MS, ZT_OUTCOME, ZT_TOPIC
 
 
 @pytest.mark.parametrize(
@@ -103,6 +105,32 @@ def test_subscriber_error_does_not_block_others() -> None:
         await bus.aclose()
 
     asyncio.run(_run())
+
+
+def test_subscriber_failed_logs_zt(caplog: pytest.LogCaptureFixture) -> None:
+    async def _run() -> None:
+        bus = EventBus()
+
+        async def bad(_t: str, _e: dict[str, Any]) -> None:
+            raise ValueError("boom")
+
+        await bus.subscribe("/zt-fail", bad)
+        with caplog.at_level(logging.ERROR, logger="core.event_bus"):
+            await bus.publish("/zt-fail", {"correlation_id": "eb-1", "k": 1})
+            await asyncio.sleep(0.05)
+        await bus.aclose()
+
+    asyncio.run(_run())
+    fail_recs = [
+        r
+        for r in caplog.records
+        if getattr(r, ZT_OUTCOME, None) == "subscriber_failed"
+        and getattr(r, ZT_COMPONENT, None) == "event_bus"
+    ]
+    assert len(fail_recs) == 1
+    assert getattr(fail_recs[0], ZT_TOPIC, None) == "/zt-fail"
+    assert getattr(fail_recs[0], ZT_CORRELATION_ID, None) == "eb-1"
+    assert getattr(fail_recs[0], ZT_DURATION_MS, None) is not None
 
 
 def test_unsubscribe() -> None:

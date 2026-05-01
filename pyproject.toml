@@ -42,7 +42,7 @@ omit = ["*/tests/*"]
 
 [tool.coverage.report]
 fail_under = 0
-# Phase 0 起：仅对 core/ 逐步提高；全仓库门禁见 CLAUDE.md
+# 门禁由 CI / make verify 显式执行：core/* ≥85%，Phase 1.4 skills/quick_consumption ≥90%；见 .github/workflows/ci.yml
 
 [build-system]
 requires = ["poetry-core"]

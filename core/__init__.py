@@ -1,11 +1,15 @@
 """Core runtime: event bus, state, orchestrator, skills base (Phase 0+)."""
 
 from core.event_bus import EventBus, topic_matches
+from core.event_bus_factory import AnyEventBus, create_event_bus
+from core.observability import configure_zhiweitong_logging, zt_log_extra
+from core.redis_event_bus import RedisEventBus
 from core.org_tree import REQUIRED_PREFIX, OrgTree
 from core.orchestrator import (
     GoalReport,
     Orchestrator,
     PlanStep,
+    PlannerTokenUsage,
     command_topic,
     result_topic,
 )
@@ -28,6 +32,7 @@ from core.state_manager import StateManager
 
 __all__ = [
     "AI_CEO",
+    "AnyEventBus",
     "CoverageError",
     "EventBus",
     "KnowledgeStore",
@@ -35,8 +40,13 @@ __all__ = [
     "Orchestrator",
     "OrgTree",
     "PlanStep",
+    "PlannerTokenUsage",
     "REQUIRED_PREFIX",
+    "RedisEventBus",
     "command_topic",
+    "create_event_bus",
+    "configure_zhiweitong_logging",
+    "zt_log_extra",
     "SandboxReport",
     "SkillBase",
     "SkillRegistry",

@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import tempfile
 
 import pytest
+
+from core.observability import ZT_DURATION_MS, ZT_OUTCOME, ZT_SKILL_ID
 
 from core.event_bus import EventBus
 from core.evolution import AUDIT_SKILL_ORG_PATH, EvolutionEngine, EvolutionThresholds
@@ -56,6 +59,30 @@ class LeafSkill(SkillBase):
 
     async def execute(self, event: dict) -> dict:
         return {"ok": True}
+
+
+class LeafSkillDupOrg(SkillBase):
+    """Second leaf at same org_path as ``LeafSkill`` — triggers resolve_ambiguous."""
+
+    META = minimal_skill_meta(
+        skill_id="leaf_qc_dup",
+        name="快消叶岗副本",
+        org_path="/智维通/城市乳业/快消板块",
+    )
+
+    async def execute(self, event: dict) -> dict:
+        return {"ok": True}
+
+
+class BoomSkill(SkillBase):
+    META = minimal_skill_meta(
+        skill_id="leaf_boom",
+        name="boom",
+        org_path="/智维通/城市乳业/快消板块/boom",
+    )
+
+    async def execute(self, event: dict) -> dict:
+        raise RuntimeError("boom")
 
 
 class _DummyKnowledgeStore:
@@ -131,3 +158,122 @@ def test_gateway_runs_audit_after_evolution_command(tmp_db_url: str) -> None:
         await sm.aclose()
 
     asyncio.run(_run())
+
+
+def test_gateway_execute_ok_logs_zt_outcome(tmp_db_url: str, caplog: pytest.LogCaptureFixture) -> None:
+    org = "/智维通/城市乳业/快消板块"
+
+    async def _run() -> None:
+        bus = EventBus()
+        sm = StateManager(database_url=tmp_db_url)
+        await sm.init_schema()
+        reg = SkillRegistry()
+        reg.register(LeafSkill())
+        gw = SkillCommandGateway(bus, reg, sm)
+        await gw.start()
+        try:
+            await bus.publish(
+                f"{org}/command",
+                EventEnvelope(
+                    correlation_id="gw-ok-1",
+                    org_path=org,
+                    skill_id="leaf_qc",
+                    payload={"action": "ping", "params": {}},
+                ).model_dump(),
+            )
+            await asyncio.sleep(0.08)
+        finally:
+            await gw.stop()
+            await bus.aclose()
+            await sm.aclose()
+
+    with caplog.at_level(logging.INFO, logger="core.skill_command_gateway"):
+        asyncio.run(_run())
+
+    ok_recs = [
+        r
+        for r in caplog.records
+        if r.name == "core.skill_command_gateway" and getattr(r, ZT_OUTCOME, None) == "execute_ok"
+    ]
+    assert len(ok_recs) == 1
+    assert getattr(ok_recs[0], ZT_SKILL_ID, None) == "leaf_qc"
+    assert getattr(ok_recs[0], ZT_DURATION_MS, None) is not None
+
+
+def test_gateway_execute_failed_logs_zt_outcome(tmp_db_url: str, caplog: pytest.LogCaptureFixture) -> None:
+    org = "/智维通/城市乳业/快消板块/boom"
+
+    async def _run() -> None:
+        bus = EventBus()
+        sm = StateManager(database_url=tmp_db_url)
+        await sm.init_schema()
+        reg = SkillRegistry()
+        reg.register(BoomSkill())
+        gw = SkillCommandGateway(bus, reg, sm)
+        await gw.start()
+        try:
+            await bus.publish(
+                f"{org}/command",
+                EventEnvelope(
+                    correlation_id="gw-fail-1",
+                    org_path=org,
+                    skill_id="leaf_boom",
+                    payload={"action": "ping", "params": {}},
+                ).model_dump(),
+            )
+            await asyncio.sleep(0.08)
+        finally:
+            await gw.stop()
+            await bus.aclose()
+            await sm.aclose()
+
+    with caplog.at_level(logging.ERROR, logger="core.skill_command_gateway"):
+        asyncio.run(_run())
+
+    fail_recs = [
+        r
+        for r in caplog.records
+        if r.name == "core.skill_command_gateway" and getattr(r, ZT_OUTCOME, None) == "execute_failed"
+    ]
+    assert len(fail_recs) == 1
+    assert getattr(fail_recs[0], ZT_SKILL_ID, None) == "leaf_boom"
+    assert getattr(fail_recs[0], ZT_DURATION_MS, None) is not None
+
+
+def test_resolve_ambiguous_logs_zt_outcome(tmp_db_url: str, caplog: pytest.LogCaptureFixture) -> None:
+    org = "/智维通/城市乳业/快消板块"
+
+    async def _run() -> None:
+        bus = EventBus()
+        sm = StateManager(database_url=tmp_db_url)
+        await sm.init_schema()
+        reg = SkillRegistry()
+        reg.register(LeafSkill())
+        reg.register(LeafSkillDupOrg())
+        gw = SkillCommandGateway(bus, reg, sm)
+        await gw.start()
+        try:
+            await bus.publish(
+                f"{org}/command",
+                EventEnvelope(
+                    correlation_id="gw-amb",
+                    org_path=org,
+                    skill_id="leaf_qc",
+                    payload={"action": "ping", "params": {}},
+                ).model_dump(),
+            )
+            await asyncio.sleep(0.08)
+        finally:
+            await gw.stop()
+            await bus.aclose()
+            await sm.aclose()
+
+    with caplog.at_level(logging.WARNING, logger="core.skill_command_gateway"):
+        asyncio.run(_run())
+
+    amb = [
+        r
+        for r in caplog.records
+        if getattr(r, ZT_OUTCOME, None) == "resolve_ambiguous"
+    ]
+    assert len(amb) == 1

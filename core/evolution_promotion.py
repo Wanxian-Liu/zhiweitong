@@ -13,6 +13,7 @@ import logging
 from typing import Any
 
 from core.event_bus import EventBus
+from core.observability import zt_log_extra
 from core.orchestrator import KnowledgeStoreLike
 from core.state_manager import StateManager
 from shared.system_topics import EVOLUTION_APPROVED
@@ -64,7 +65,17 @@ class EvolutionPromotion:
         aid = str(pl.get("audit_correlation_id") or "").strip()
         sid = str(pl.get("target_skill_id") or "").strip()
         if not kid or not aid or not sid:
-            logger.warning("evolution_promotion skip: missing ids payload=%s", pl)
+            _bcid = event.get("correlation_id")
+            logger.warning(
+                "evolution_promotion skip: missing ids payload=%s",
+                pl,
+                extra=zt_log_extra(
+                    component="evolution_promotion",
+                    outcome="skip_missing_ids",
+                    skill_id=sid or None,
+                    correlation_id=str(_bcid) if _bcid is not None else None,
+                ),
+            )
             return
 
         entity = _promotion_entity_id(sid, kid, aid)

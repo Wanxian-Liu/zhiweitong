@@ -132,3 +132,12 @@ class OrgTree:
         pairs.sort(key=lambda x: (len(x[0]), x[0]))
         for path, meta in pairs:
             self.add_node(path, meta)
+
+
+def canonical_org_tree() -> OrgTree:
+    """预载 :mod:`shared.org_canonical` 中已注册岗路径的 :class:`OrgTree`。"""
+    from shared.org_canonical import CANONICAL_ORG_PATHS
+
+    tree = OrgTree()
+    tree.load_many({p: {} for p in CANONICAL_ORG_PATHS})
+    return tree

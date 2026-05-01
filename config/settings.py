@@ -38,6 +38,10 @@ class Settings:
 
 def load_settings() -> Settings:
     load_repo_dotenv()
+    # 延迟导入，避免 ``config.settings`` 与 ``core`` 包初始化循环依赖
+    from core.observability import configure_zhiweitong_logging
+
+    configure_zhiweitong_logging()
     return Settings(
         database_url=_get(
             "ZHIWEITONG_DATABASE_URL",

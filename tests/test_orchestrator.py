@@ -3,14 +3,25 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import tempfile
 from typing import Any
 
+import httpx
 import pytest
 
 from config.settings import Settings
+from core.observability import ZT_DURATION_MS, ZT_OUTCOME
 from core.event_bus import EventBus
-from core.orchestrator import GoalReport, Orchestrator, PlanStep, _extract_json_object, command_topic, result_topic
+from core.orchestrator import (
+    GoalReport,
+    Orchestrator,
+    PlanStep,
+    PlannerTokenUsage,
+    _extract_json_object,
+    command_topic,
+    result_topic,
+)
 from core.org_tree import OrgTree
 from core.skill_base import SkillBase, minimal_skill_meta
 from core.skill_registry import SkillRegistry
@@ -93,7 +104,11 @@ def test_process_goal_with_plan_provider(tmp_db_url: str) -> None:
                 correlation_id=event["correlation_id"],
                 org_path=event["org_path"],
                 skill_id=event["skill_id"],
-                payload={"ok": True, "summary": {"echo": event.get("payload", {}).get("action")}},
+                payload={
+                    "ok": True,
+                    "summary": {"echo": event.get("payload", {}).get("action")},
+                    "usage": {"prompt_tokens": 3, "completion_tokens": 7},
+                },
             )
             await bus.publish(f"{base}/result", out.model_dump())
 
@@ -125,6 +140,98 @@ def test_process_goal_with_plan_provider(tmp_db_url: str) -> None:
         assert len(report.steps) == 1
         assert report.steps[0].ok
         assert report.steps[0].summary.get("echo") == "ping"
+        assert report.steps[0].prompt_tokens == 3
+        assert report.steps[0].completion_tokens == 7
+
+    asyncio.run(_run())
+
+
+def test_process_goal_planner_tokens_from_llm_response(tmp_db_url: str) -> None:
+    plan_body = (
+        '{"steps":[{"skill_path":"/智维通/城市乳业/快消板块",'
+        '"action":"ping","params":{}}]}'
+    )
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": plan_body}}],
+                "usage": {"prompt_tokens": 100, "completion_tokens": 50, "total_tokens": 150},
+            },
+        )
+
+    async def _run() -> None:
+        transport = httpx.MockTransport(handler)
+        client = httpx.AsyncClient(transport=transport)
+        bus = EventBus()
+        sm = StateManager(database_url=tmp_db_url)
+        await sm.init_schema()
+        reg = SkillRegistry()
+        reg.register(LeafSkill())
+
+        class DummyKS:
+            async def store(
+                self,
+                tags: list[str],
+                content: str,
+                metadata: dict[str, Any],
+                *,
+                org_path: str | None = None,
+            ) -> str:
+                return "doc-1"
+
+        tree = OrgTree()
+        tree.load_many({"/智维通/城市乳业": {}, "/智维通/城市乳业/快消板块": {}})
+
+        async def cmd_worker(topic: str, event: dict[str, Any]) -> None:
+            if not str(topic).endswith("/command"):
+                return
+            base = str(topic)[: -len("/command")]
+            out = EventEnvelope(
+                correlation_id=event["correlation_id"],
+                org_path=event["org_path"],
+                skill_id=event["skill_id"],
+                payload={"ok": True, "summary": {}},
+            )
+            await bus.publish(f"{base}/result", out.model_dump())
+
+        await bus.subscribe("/智维通/城市乳业*", cmd_worker)
+
+        orch = Orchestrator(
+            bus,
+            sm,
+            reg,
+            DummyKS(),
+            tree,
+            settings=Settings(
+                database_url=tmp_db_url,
+                redis_url="",
+                llm_api_key="sk-test",
+                llm_base_url="https://api.example/v1",
+            ),
+            http_client=client,
+            own_http_client=True,
+            step_timeout=5.0,
+        )
+        try:
+            report = await orch.process_goal("goal via mock llm")
+        finally:
+            await orch.aclose()
+            await bus.aclose()
+            await sm.aclose()
+
+        assert report.ok
+        assert report.planner_tokens == PlannerTokenUsage(
+            prompt_tokens=100,
+            completion_tokens=50,
+            total_tokens=150,
+        )
+        assert report.aggregated["planner_tokens"] == {
+            "prompt_tokens": 100,
+            "completion_tokens": 50,
+            "total_tokens": 150,
+        }
 
     asyncio.run(_run())
 
@@ -282,8 +389,11 @@ def test_trigger_evolution_publishes_review(tmp_db_url: str) -> None:
     asyncio.run(_run())
 
 
-def test_process_goal_requires_llm_key_without_provider(tmp_db_url: str) -> None:
-    async def _run() -> None:
+def test_process_goal_requires_llm_key_without_provider(
+    tmp_db_url: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    async def _run() -> GoalReport:
         bus = EventBus()
         sm = StateManager(database_url=tmp_db_url)
         await sm.init_schema()
@@ -318,12 +428,15 @@ def test_process_goal_requires_llm_key_without_provider(tmp_db_url: str) -> None
             ),
         )
         try:
-            report = await orch.process_goal("x")
+            return await orch.process_goal("x")
         finally:
             await bus.aclose()
             await sm.aclose()
 
-        assert not report.ok
-        assert report.planner_error
-
-    asyncio.run(_run())
+    with caplog.at_level(logging.WARNING, logger="core.orchestrator"):
+        report = asyncio.run(_run())
+    assert not report.ok
+    assert report.planner_error
+    aborted = [r for r in caplog.records if getattr(r, ZT_OUTCOME, None) == "plan_aborted"]
+    assert len(aborted) == 1
+    assert getattr(aborted[0], ZT_DURATION_MS, None) is not None

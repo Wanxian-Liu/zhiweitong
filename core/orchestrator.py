@@ -1,6 +1,6 @@
 """AI 总经理 Orchestrator — OpenCLAW Phase 1.2.
 
-Publishes work to Skills via :class:`core.event_bus.EventBus` only; never calls
+Publishes work to Skills via :class:`core.event_bus.EventBus` or :class:`core.redis_event_bus.RedisEventBus` only; never calls
 :class:`core.skill_base.SkillBase.execute` directly.
 """
 
@@ -19,7 +19,8 @@ import httpx
 from pydantic import BaseModel, Field
 
 from config.settings import Settings, load_settings
-from core.event_bus import EventBus
+from core.event_bus_factory import AnyEventBus
+from core.observability import zt_log_extra
 from core.org_tree import OrgTree
 from core.skill_base import SkillBase
 from core.skill_registry import SkillRegistry
@@ -100,6 +101,60 @@ class StepRunRecord:
     completion_tokens: int | None = None
 
 
+@dataclass(frozen=True)
+class PlannerTokenUsage:
+    """Token counts from the LLM planner call (OpenAI-compatible ``usage`` object)."""
+
+    prompt_tokens: int | None = None
+    completion_tokens: int | None = None
+    total_tokens: int | None = None
+
+
+def _planner_usage_from_openai_response(data: dict[str, Any]) -> PlannerTokenUsage | None:
+    raw = data.get("usage")
+    if not isinstance(raw, dict):
+        return None
+    def _i(key: str) -> int | None:
+        v = raw.get(key)
+        if v is None:
+            return None
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return None
+
+    pt, ct, tt = _i("prompt_tokens"), _i("completion_tokens"), _i("total_tokens")
+    if pt is None and ct is None and tt is None:
+        return None
+    return PlannerTokenUsage(prompt_tokens=pt, completion_tokens=ct, total_tokens=tt)
+
+
+def _step_tokens_from_payload(payload: dict[str, Any]) -> tuple[int | None, int | None]:
+    """Skill may return ``usage: {prompt_tokens, completion_tokens}`` or flat keys on payload."""
+    u = payload.get("usage")
+    if isinstance(u, dict):
+        def _j(k: str) -> int | None:
+            v = u.get(k)
+            if v is None:
+                return None
+            try:
+                return int(v)
+            except (TypeError, ValueError):
+                return None
+
+        return _j("prompt_tokens"), _j("completion_tokens")
+    def _k(key: str) -> int | None:
+        v = payload.get(key)
+        if v is None:
+            return None
+        try:
+            return int(v)
+        except (TypeError, ValueError):
+            return None
+
+    return _k("prompt_tokens"), _k("completion_tokens")
+
+
 @dataclass
 class GoalReport:
     goal_text: str
@@ -109,6 +164,7 @@ class GoalReport:
     aggregated: dict[str, Any]
     planner_attempts: int = 0
     planner_error: str | None = None
+    planner_tokens: PlannerTokenUsage | None = None
 
 
 class Orchestrator:
@@ -116,7 +172,7 @@ class Orchestrator:
 
     def __init__(
         self,
-        event_bus: EventBus,
+        event_bus: AnyEventBus,
         state_manager: StateManager,
         skill_registry: SkillRegistry,
         knowledge_store: KnowledgeStoreLike,
@@ -169,10 +225,14 @@ class Orchestrator:
         forbidden = skill.meta.compliance.forbidden_operations
         return bool(ABORT_ON_FAILURE_OPS & set(forbidden))
 
-    async def _build_plan(self, goal_text: str) -> tuple[list[PlanStep], int, str | None]:
+    async def _build_plan(
+        self,
+        goal_text: str,
+        goal_run_id: str,
+    ) -> tuple[list[PlanStep], int, str | None, PlannerTokenUsage | None]:
         if self._plan_provider is not None:
             steps = await self._plan_provider(goal_text)
-            return steps, 1, None
+            return steps, 1, None, None
         key = self._settings.llm_api_key
         if not key:
             return (
@@ -180,18 +240,24 @@ class Orchestrator:
                 0,
                 "LLM API key missing (ZHIWEITONG_LLM_API_KEY); "
                 "set it or pass plan_provider= for tests",
+                None,
             )
         last_err: str | None = None
         for attempt in range(3):
             try:
-                steps = await self._call_llm_planner(goal_text)
-                return steps, attempt + 1, None
+                steps, usage = await self._call_llm_planner(goal_text)
+                return steps, attempt + 1, None, usage
             except Exception as e:
                 last_err = f"{type(e).__name__}: {e}"
-                logger.warning("planner attempt %s failed: %s", attempt + 1, last_err)
-        return [], 3, last_err
+                logger.warning(
+                    "planner attempt %s failed: %s",
+                    attempt + 1,
+                    last_err,
+                    extra=zt_log_extra(goal_run_id=goal_run_id, component="orchestrator_planner"),
+                )
+        return [], 3, last_err, None
 
-    async def _call_llm_planner(self, goal_text: str) -> list[PlanStep]:
+    async def _call_llm_planner(self, goal_text: str) -> tuple[list[PlanStep], PlannerTokenUsage | None]:
         base = self._settings.llm_base_url.rstrip("/")
         url = f"{base}/chat/completions"
         system = (
@@ -223,6 +289,7 @@ class Orchestrator:
             )
             r.raise_for_status()
             data = r.json()
+            usage = _planner_usage_from_openai_response(data)
             content = data["choices"][0]["message"]["content"]
             if isinstance(content, str):
                 text = content.strip()
@@ -230,19 +297,40 @@ class Orchestrator:
                 text = json.dumps(content)
             parsed = _extract_json_object(text)
             plan = PlanPayload.model_validate(parsed)
-            return plan.steps
+            return plan.steps, usage
         finally:
             if created_here:
                 await client.aclose()
 
     async def process_goal(self, goal_text: str) -> GoalReport:
         """Plan via LLM (or ``plan_provider``), dispatch commands, aggregate results."""
+        t_goal0 = time.perf_counter()
         plan_id = str(uuid.uuid4())
-        steps_plan, planner_attempts, planner_err = await self._build_plan(goal_text)
+        steps_plan, planner_attempts, planner_err, planner_usage = await self._build_plan(goal_text, plan_id)
         records: list[StepRunRecord] = []
         aggregated: dict[str, Any] = {"plan_id": plan_id, "summaries": []}
+        if planner_usage is not None:
+            aggregated["planner_tokens"] = {
+                "prompt_tokens": planner_usage.prompt_tokens,
+                "completion_tokens": planner_usage.completion_tokens,
+                "total_tokens": planner_usage.total_tokens,
+            }
 
         if planner_err and not steps_plan:
+            elapsed_ms = (time.perf_counter() - t_goal0) * 1000.0
+            logger.warning(
+                "orchestrator goal aborted plan_id=%s planner_attempts=%s error=%s duration_ms=%.1f",
+                plan_id,
+                planner_attempts,
+                planner_err,
+                elapsed_ms,
+                extra=zt_log_extra(
+                    goal_run_id=plan_id,
+                    component="orchestrator",
+                    outcome="plan_aborted",
+                    duration_ms=elapsed_ms,
+                ),
+            )
             return GoalReport(
                 goal_text=goal_text,
                 plan_id=plan_id,
@@ -251,7 +339,23 @@ class Orchestrator:
                 aggregated=aggregated,
                 planner_attempts=planner_attempts,
                 planner_error=planner_err,
+                planner_tokens=planner_usage,
             )
+
+        tok_s = (
+            f"pt={planner_usage.prompt_tokens} ct={planner_usage.completion_tokens} "
+            f"tt={planner_usage.total_tokens}"
+            if planner_usage is not None
+            else "none"
+        )
+        logger.info(
+            "orchestrator goal plan_id=%s planner_attempts=%s step_count=%s planner_tokens=%s",
+            plan_id,
+            planner_attempts,
+            len(steps_plan),
+            tok_s,
+            extra=zt_log_extra(goal_run_id=plan_id, component="orchestrator"),
+        )
 
         pending: dict[str, tuple[asyncio.Future[dict[str, Any]], str]] = {}
 
@@ -301,15 +405,25 @@ class Orchestrator:
                 cmd_topic = command_topic(skill.meta.org_path)
                 await self._bus.publish(cmd_topic, env.model_dump())
                 logger.info(
-                    "orchestrator published command topic=%s correlation_id=%s plan_id=%s",
+                    "orchestrator published command topic=%s correlation_id=%s plan_id=%s step_index=%s",
                     cmd_topic,
                     cid,
                     plan_id,
+                    idx,
+                    extra=zt_log_extra(
+                        goal_run_id=plan_id,
+                        step_index=idx,
+                        correlation_id=cid,
+                        skill_id=skill.meta.skill_id,
+                        component="orchestrator",
+                    ),
                 )
 
                 err: str | None = None
                 summary: dict[str, Any] = {}
                 step_ok = True
+                pt_step: int | None = None
+                ct_step: int | None = None
                 try:
                     result_event = await asyncio.wait_for(fut, timeout=self._step_timeout)
                     payload = result_event.get("payload") or {}
@@ -317,6 +431,7 @@ class Orchestrator:
                         step_ok = False
                         err = str(payload.get("error") or "skill reported ok=false")
                     summary = dict(payload.get("summary") or {})
+                    pt_step, ct_step = _step_tokens_from_payload(payload)
                 except TimeoutError:
                     step_ok = False
                     err = "step_timeout"
@@ -336,6 +451,8 @@ class Orchestrator:
                     ok=step_ok,
                     error=err,
                     summary=summary,
+                    prompt_tokens=pt_step,
+                    completion_tokens=ct_step,
                 )
                 records.append(rec)
                 if summary:
@@ -364,12 +481,24 @@ class Orchestrator:
                 )
 
                 logger.info(
-                    "orchestrator step idx=%s skill_id=%s ok=%s duration_ms=%.1f err=%s",
+                    "orchestrator step plan_id=%s idx=%s skill_id=%s correlation_id=%s "
+                    "ok=%s duration_ms=%.1f err=%s",
+                    plan_id,
                     idx,
                     skill.meta.skill_id,
+                    cid,
                     step_ok,
                     dt_ms,
                     err,
+                    extra=zt_log_extra(
+                        goal_run_id=plan_id,
+                        step_index=idx,
+                        correlation_id=cid,
+                        skill_id=skill.meta.skill_id,
+                        component="orchestrator",
+                        outcome="step_ok" if step_ok else "step_failed",
+                        duration_ms=dt_ms,
+                    ),
                 )
 
                 if not step_ok:
@@ -392,14 +521,32 @@ class Orchestrator:
         finally:
             self._bus.unsubscribe(sub_id)
 
+        elapsed_ms = (time.perf_counter() - t_goal0) * 1000.0
+        final_ok = ok_all and planner_err is None
+        outcome = "goal_ok" if final_ok else "goal_failed"
+        logger.info(
+            "orchestrator goal finished plan_id=%s ok=%s outcome=%s duration_ms=%.1f step_count=%s",
+            plan_id,
+            final_ok,
+            outcome,
+            elapsed_ms,
+            len(records),
+            extra=zt_log_extra(
+                goal_run_id=plan_id,
+                component="orchestrator",
+                outcome=outcome,
+                duration_ms=elapsed_ms,
+            ),
+        )
         return GoalReport(
             goal_text=goal_text,
             plan_id=plan_id,
-            ok=ok_all and planner_err is None,
+            ok=final_ok,
             steps=records,
             aggregated=aggregated,
             planner_attempts=planner_attempts,
             planner_error=planner_err,
+            planner_tokens=planner_usage,
         )
 
     async def trigger_evolution(self, skill_id: str) -> str:
@@ -423,5 +570,10 @@ class Orchestrator:
             payload={"knowledge_doc_id": doc_id, "message": "evolution_review_pending"},
         )
         await self._bus.publish(EVOLUTION_REVIEW, review.model_dump())
-        logger.info("orchestrator trigger_evolution skill_id=%s doc_id=%s", skill_id, doc_id)
+        logger.info(
+            "orchestrator trigger_evolution skill_id=%s doc_id=%s",
+            skill_id,
+            doc_id,
+            extra=zt_log_extra(skill_id=skill_id, component="orchestrator"),
+        )
         return doc_id

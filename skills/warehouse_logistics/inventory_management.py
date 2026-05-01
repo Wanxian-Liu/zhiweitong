@@ -6,6 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from core.command_payload import effective_skill_payload
 from core.orchestrator import result_topic
 from core.skill_base import (
     SkillBase,
@@ -17,9 +18,11 @@ from core.skill_base import (
     json_schema,
 )
 from shared.models import EventEnvelope
+from shared.slice_l2 import l2_reconcile_block
 
 ORG_PATH = "/智维通/城市乳业/仓储物流/库存管理"
 SKILL_ID = "wh_inventory_management"
+RULE_VERSION = "inv-threshold-v1"
 
 
 class InventoryManagementInput(BaseModel):
@@ -36,6 +39,7 @@ class InventoryManagementOutput(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     ok: bool
+    rule_version: str
     sku: str
     quantity_on_hand: int
     reorder_suggested: bool
@@ -56,7 +60,7 @@ class InventoryManagementSkill(SkillBase):
             output_schema=json_schema(InventoryManagementOutput),
             required_input_fields=["correlation_id"],
             optional_input_fields=["payload.sku", "payload.quantity_on_hand", "payload.reorder_threshold"],
-            error_codes=["E_WH_INVALID_PAYLOAD"],
+            error_codes=["E_WH_INVALID_PAYLOAD", "I_REORDER_SUGGESTED"],
         ),
         execution=SkillExecution(
             workflow_steps=["resolve_sku", "read_levels", "apply_threshold", "persist_snapshot", "publish_result"],
@@ -81,22 +85,36 @@ class InventoryManagementSkill(SkillBase):
         if self._bus is None or self._state is None:
             raise RuntimeError("inject event_bus/state_manager or call attach_sandbox before execute")
         req = InventoryManagementInput.model_validate(event)
-        payload = dict(req.payload)
+        payload = effective_skill_payload(dict(req.payload))
         sku = str(payload.get("sku", "SKU-MILK-1L"))
         qoh = int(payload.get("quantity_on_hand", 0))
         threshold = int(payload.get("reorder_threshold", 100))
         reorder_suggested = qoh < threshold
 
         summary = {
+            "rule_version": RULE_VERSION,
             "sku": sku,
             "quantity_on_hand": qoh,
             "reorder_suggested": reorder_suggested,
+            "l2_reconcile": l2_reconcile_block(
+                "sku_on_hand_snapshot",
+                {"sku": sku, "reorder_threshold": threshold},
+                "quantity_on_hand",
+                "现存量与 WMS 台账同一 SKU、同一截点核对；低于 reorder_threshold 时给出补货提示。",
+            ),
+            "exception_code": "I_REORDER_SUGGESTED" if reorder_suggested else None,
+            "manual_handoff": (
+                "库存低于阈值，可按内部补货/请购流程处理（业务自定）。"
+                if reorder_suggested
+                else None
+            ),
         }
         entity = f"{self.meta.org_path}/{self.meta.skill_id}/{req.correlation_id}"
         await self._state.save_state(entity, summary, self.meta.skill_id)
 
         out = InventoryManagementOutput(
             ok=True,
+            rule_version=RULE_VERSION,
             sku=sku,
             quantity_on_hand=qoh,
             reorder_suggested=reorder_suggested,

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-__all__ = ["ReceivableReconciliationSkill"]
+__all__ = ["PayableReconciliationSkill", "ReceivableReconciliationSkill"]
 
 
 def __getattr__(name: str) -> Any:
@@ -16,4 +16,8 @@ def __getattr__(name: str) -> Any:
         from skills.finance_center.receivable_reconciliation import ReceivableReconciliationSkill
 
         return ReceivableReconciliationSkill
+    if name == "PayableReconciliationSkill":
+        from skills.finance_center.payable_reconciliation import PayableReconciliationSkill
+
+        return PayableReconciliationSkill
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

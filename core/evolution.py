@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from core.event_bus import EventBus
+from core.observability import zt_log_extra
 from core.knowledge_store import KnowledgeStore
 from core.orchestrator import command_topic
 from core.sandbox import SandboxReport, run_sandbox
@@ -240,7 +241,17 @@ class EvolutionEngine:
         try:
             skill_cls = type(self._registry.get_skill(skill_id))
         except Exception:
-            logger.warning("evolution: skill %s not in registry; sandbox skipped", skill_id)
+            _lcid = last_event.get("correlation_id")
+            logger.warning(
+                "evolution: skill %s not in registry; sandbox skipped",
+                skill_id,
+                extra=zt_log_extra(
+                    component="evolution_engine",
+                    outcome="skill_not_in_registry",
+                    skill_id=skill_id,
+                    correlation_id=str(_lcid) if _lcid is not None else None,
+                ),
+            )
 
         sandbox_ok = True
         report: SandboxReport | None = None
