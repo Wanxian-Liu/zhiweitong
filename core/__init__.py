@@ -9,17 +9,29 @@ from core.skill_base import (
     json_schema,
     minimal_skill_meta,
 )
+from core.sandbox import (
+    CoverageError,
+    SandboxReport,
+    StubEventBus,
+    StubStateManager,
+    run_sandbox,
+)
 from core.state_manager import StateManager
 
 __all__ = [
     "AI_CEO",
+    "CoverageError",
     "EventBus",
     "OrgTree",
     "REQUIRED_PREFIX",
+    "SandboxReport",
     "SkillBase",
     "SkillMeta",
     "StateManager",
+    "StubEventBus",
+    "StubStateManager",
     "json_schema",
     "minimal_skill_meta",
+    "run_sandbox",
     "topic_matches",
 ]
