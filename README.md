@@ -12,3 +12,4 @@
 
 - `poetry run zhiweitong --help`
 - 进化审阅：`promote-preview`；**落盘**：`promote-apply`（默认仅 unified diff，确认后加 **`--write`**，会先写 `*.promote-backup-<时间戳>`）
+- **Makefile**：`make promote-preview DOC_ID=…`、`make promote-apply DOC_ID=…`；写盘加 **`WRITE=1`**；可选 **`CHROMA=`**、**`SKILL=`**（见 `Makefile` 注释）
