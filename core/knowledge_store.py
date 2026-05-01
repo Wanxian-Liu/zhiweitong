@@ -10,10 +10,13 @@ import json
 import uuid
 from functools import partial
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
-from chromadb.api.types import Documents, EmbeddingFunction, Embeddings, Space
+from chromadb.api.types import Documents, EmbeddingFunction, Embeddings
+
+# Chroma 0.5.x no longer exports ``Space`` from ``chromadb.api.types``; keep the same literals locally.
+Space = Literal["cosine", "l2", "ip"]
 
 from core.org_tree import OrgTree
 
