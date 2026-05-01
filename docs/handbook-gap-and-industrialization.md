@@ -70,7 +70,7 @@
 2. **P0 配置与密钥**：环境分层（dev/stage/prod）、密钥不落盘、轮换策略。
 3. **P0 部署模型**：单进程 vs 多副本；EventBus 从内存队列迁 **Redis Pub/Sub**（手册已预留）的时机与契约。
 4. **P0 安全**：总线鉴权、敏感 topic、知识库与 State 的访问边界。
-5. **P1 灾备**：SQLite/Chroma 备份恢复演练；State 与知识库一致性说明。
+5. **P1 灾备**：SQLite/Chroma 备份恢复演练；State 与知识库一致性说明（起步见 **`docs/ops-runbook.md`**）。  
 6. **P2 开发者体验**：`README` 一键启动、Makefile/poetry 脚本、API/事件契约的 OpenAPI 或表格维护。
 
 ---
