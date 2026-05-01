@@ -1,0 +1,59 @@
+# zhiweitong — OpenCLAW CI（pytest + 变更 Skill 的 validate 门禁）
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poetry
+        run: pipx install poetry==1.8.5
+
+      - name: Cache Poetry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pypoetry
+          key: poetry-${{ runner.os }}-${{ hashFiles('pyproject.toml', 'poetry.lock') }}
+
+      - name: Install dependencies
+        run: poetry install --no-interaction
+
+      - name: Pytest
+        run: poetry run pytest tests/ -q --tb=short
+
+      - name: Validate changed Skill files (pull_request only)
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+          echo "Diff range: ${BASE}...${HEAD}"
+          mapfile -t files < <(git diff --name-only "$BASE...$HEAD" | grep -E '^skills/.+\.py$' | grep -v '/__init__\.py$' || true)
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No skills/**/*.py changes in this PR; skipping per-file validate."
+            exit 0
+          fi
+          for f in "${files[@]}"; do
+            if [ ! -f "$f" ]; then
+              echo "Skip removed file: $f"
+              continue
+            fi
+            echo "==> zhiweitong validate $f"
+            poetry run zhiweitong validate "$f" --skip-sandbox
+          done

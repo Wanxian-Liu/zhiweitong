@@ -173,6 +173,26 @@ class KnowledgeStore:
         await asyncio.to_thread(_add)
         return doc_id
 
+    async def get_by_id(self, doc_id: str) -> dict[str, Any] | None:
+        """Return ``{doc_id, content, metadata, tags}`` or None if missing."""
+
+        def _get() -> dict[str, Any]:
+            return self._collection.get(ids=[doc_id], include=["documents", "metadatas"])
+
+        raw = await asyncio.to_thread(_get)
+        if not raw.get("ids"):
+            return None
+        meta_row = dict(raw["metadatas"][0] or {})
+        tags = _decode_tags(str(meta_row.get("tags", "")))
+        user_meta = {k: v for k, v in meta_row.items() if k not in ("tags", "org_path")}
+        return {
+            "doc_id": raw["ids"][0],
+            "content": raw["documents"][0],
+            "metadata": user_meta,
+            "tags": tags,
+            "org_path": meta_row.get("org_path"),
+        }
+
     async def retrieve(
         self,
         tags: list[str],

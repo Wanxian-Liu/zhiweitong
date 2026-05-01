@@ -25,6 +25,7 @@ from core.skill_base import SkillBase
 from core.skill_registry import SkillRegistry
 from core.state_manager import StateManager
 from shared.models import EventEnvelope
+from shared.system_topics import EVOLUTION_REVIEW, SYSTEM_ERRORS
 
 logger = logging.getLogger(__name__)
 
@@ -373,6 +374,19 @@ class Orchestrator:
 
                 if not step_ok:
                     ok_all = False
+                    err_env = EventEnvelope(
+                        correlation_id=cid,
+                        org_path=skill.meta.org_path,
+                        skill_id=skill.meta.skill_id,
+                        payload={
+                            "error": err or "unknown",
+                            "latency_ms": dt_ms,
+                            "plan_id": plan_id,
+                            "step_index": idx,
+                            "source": "orchestrator",
+                        },
+                    )
+                    await self._bus.publish(SYSTEM_ERRORS, err_env.model_dump())
                     if self._abort_on_failure(skill):
                         break
         finally:
@@ -408,6 +422,6 @@ class Orchestrator:
             skill_id=skill_id,
             payload={"knowledge_doc_id": doc_id, "message": "evolution_review_pending"},
         )
-        await self._bus.publish("/system/evolution/review", review.model_dump())
+        await self._bus.publish(EVOLUTION_REVIEW, review.model_dump())
         logger.info("orchestrator trigger_evolution skill_id=%s doc_id=%s", skill_id, doc_id)
         return doc_id

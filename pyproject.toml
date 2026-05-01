@@ -28,6 +28,9 @@ pytest = "^8.0.0"
 pytest-asyncio = "^0.24.0"
 coverage = "^7.0.0"
 
+[tool.poetry.scripts]
+zhiweitong = "cli.main:run"
+
 [tool.pytest.ini_options]
 # 异步测试使用 tests 内 asyncio.run；若改用 pytest-asyncio 可配置 asyncio_mode
 

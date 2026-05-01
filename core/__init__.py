@@ -57,4 +57,26 @@ def __getattr__(name: str):
         from core.knowledge_store import KnowledgeStore
 
         return KnowledgeStore
+    if name in (
+        "AUDIT_SKILL_ID",
+        "AUDIT_SKILL_ORG_PATH",
+        "EvolutionEngine",
+        "EvolutionPromotion",
+        "EvolutionProposal",
+        "EvolutionThresholds",
+        "SkillCommandGateway",
+        "merge_execution_patch",
+        "resolve_skill_for_command_topic",
+    ):
+        if name in ("SkillCommandGateway", "resolve_skill_for_command_topic"):
+            import core.skill_command_gateway as scg
+
+            return getattr(scg, name)
+        if name == "EvolutionPromotion":
+            from core.evolution_promotion import EvolutionPromotion
+
+            return EvolutionPromotion
+        import core.evolution as evo
+
+        return getattr(evo, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

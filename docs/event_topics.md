@@ -11,10 +11,12 @@
 
 | 类型 | 模式 | 说明 |
 |------|------|------|
-| 命令 | `org_path{normalized}/command` | Orchestrator → Skill |
+| 命令 | `org_path{normalized}/command` | Orchestrator / 系统组件（如 EvolutionEngine）→ Skill；可由 `SkillCommandGateway` 订阅并派发到该 org_path 的唯一 Skill |
 | 结果 | `org_path{normalized}/result` | Skill → 上游聚合 |
-| 系统错误 | `/system/errors` | 全 Skill 异常上报 |
-| 进化审核（占位） | `/system/evolution/review` | Phase 3 |
+| 系统错误 | `/system/errors` | 全 Skill 异常上报（信封字段同 `EventEnvelope`；`payload` 建议含 `error`、`latency_ms`、可选 `source`） |
+| 进化审核 | `/system/evolution/review` | `optimization_review`：EvolutionEngine 待人工审批的执行层补丁；`evolution_draft`：Orchestrator 手工触发 |
+| 进化批准 | `/system/evolution/approved` | `gov_audit_review` 对补丁**明示批准**后发布；`payload.kind=audit_decision`，含 `target_skill_id`、`proposed_execution_patch`、`knowledge_doc_id` 等。**`EvolutionPromotion`** 订阅本 topic，幂等写入知识库快照 + State 标记（见 `core/evolution_promotion.py`） |
+| 进化否决 | `/system/evolution/rejected` | 审计岗**明示否决**后发布；载荷结构同批准（`decision=rejected`） |
 
 ## 通配订阅
 

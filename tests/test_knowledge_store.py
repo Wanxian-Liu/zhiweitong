@@ -81,6 +81,28 @@ def test_store_retrieve_with_temp_dir() -> None:
 
 
 @skip_no_chroma
+def test_get_by_id() -> None:
+    async def _run() -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ks = KnowledgeStore(persist_directory=Path(tmp))
+            doc_id = await ks.store(
+                ["t1"],
+                '{"hello": true}',
+                {"kind": "test"},
+                org_path="/智维通/城市乳业/快消板块",
+            )
+            row = await ks.get_by_id(doc_id)
+            assert row is not None
+            assert row["doc_id"] == doc_id
+            assert json.loads(row["content"]) == {"hello": True}
+            assert "t1" in row["tags"]
+            assert row["org_path"] == "/智维通/城市乳业/快消板块"
+            assert await ks.get_by_id("00000000-0000-0000-0000-000000000000") is None
+
+    asyncio.run(_run())
+
+
+@skip_no_chroma
 def test_tag_filter_excludes_mismatch() -> None:
     async def _run() -> None:
         with tempfile.TemporaryDirectory() as tmp:

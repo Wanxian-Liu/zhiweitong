@@ -16,6 +16,7 @@ from core.skill_base import SkillBase, minimal_skill_meta
 from core.skill_registry import SkillRegistry
 from core.state_manager import StateManager
 from shared.models import EventEnvelope
+from shared.system_topics import EVOLUTION_REVIEW
 
 
 @pytest.fixture
@@ -248,10 +249,10 @@ def test_trigger_evolution_publishes_review(tmp_db_url: str) -> None:
         review_events: list[dict[str, Any]] = []
 
         async def on_rev(topic: str, event: dict[str, Any]) -> None:
-            if topic == "/system/evolution/review":
+            if topic == EVOLUTION_REVIEW:
                 review_events.append(event)
 
-        await bus.subscribe("/system/evolution/review", on_rev)
+        await bus.subscribe(EVOLUTION_REVIEW, on_rev)
 
         orch = Orchestrator(
             bus,

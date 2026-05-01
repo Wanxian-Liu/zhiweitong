@@ -22,6 +22,9 @@
 ## 文档与提示词
 
 - **事件约定**：`docs/event_topics.md`（修改总线前必须先改此文件）。  
+- **手册完成度与工业级优先级**：`docs/handbook-gap-and-industrialization.md`。  
+- **进化批准落地（工业级流程）**：`docs/evolution-promotion-professional-plan.md`。  
+- **CI**：合并前请保持 `.github/workflows/ci.yml` 通过；变更 `skills/**/*.py` 时 PR 会逐项 `zhiweitong validate`。  
 - **业务与阶段整理**：`~/.openclaw/memory-vault/data/projects/zhihuitong/文案汇辑.md`（定稿 v4）。  
 - **按模块生成代码**：`~/.openclaw/memory-vault/data/projects/zhihuitong/OpenCLAW-Cursor模块提示词手册.md` — 复制其中 **0.1 → …** 到 Cursor，并 `@` 本仓库根目录。
 
