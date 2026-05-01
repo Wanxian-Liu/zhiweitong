@@ -28,12 +28,14 @@ poetry run pytest \
   tests/test_zz_vertical_slice_wh_registry_contract.py \
   tests/test_zz_vertical_slice_production_quality_chain.py \
   tests/test_zz_vertical_slice_production_quality_registry_contract.py \
+  tests/test_zz_vertical_slice_finance_trial_report_chain.py \
+  tests/test_zz_vertical_slice_finance_trial_registry_contract.py \
   -q --tb=short
 ```
 
 **期望现象**：
 
-- 当前共 **12** 条用例全部通过（供应链、财务、仓储补链、**生产补链**各含 E2E 与注册表/参数契约；合计 4 条链式 E2E + 8 条契约）。
+- 当前共 **15** 条用例全部通过（**5** 条链式 E2E + **10** 条注册表/参数契约；含供应链、财务双链、仓储补链、生产补链）。
 - 链式集成用例 `test_production_to_inventory_vertical_slice_e2e` 成功时：`GoalReport.ok is True`、**5** 步全部 `ok`，且每步 `skill_path` / `skill_id` / `summary.rule_version` 与下表及 `shared/vertical_slices.py` 一致；摘要断言覆盖 `planned_units`、`required_raw_qty`、`receipt_complete`、`reorder_suggested`、`pick_complete` 等。
 
 **不要求**：LLM、Redis、本机 `.env`（pytest 下 `ZHIWEITONG_SKIP_DOTENV=1`）。合并前仍建议本地或 CI 跑 **`make test`** 全量。
@@ -44,6 +46,7 @@ poetry run pytest \
 |--------|----------------|----------|
 | `production-inventory-v1` | 排产 → 物料需求 → 入库验收 → 库存管理 → 出库拣货 | `tests/test_zz_vertical_slice_production_inventory_chain.py` |
 | `finance-ar-ap-v1` | 应收对账 → 应付对账 | `tests/test_zz_vertical_slice_finance_ar_ap_chain.py` |
+| `finance-trial-report-v1` | 试算平衡 → 报表快照 | `tests/test_zz_vertical_slice_finance_trial_report_chain.py` |
 | `warehouse-cycle-transfer-v1` | 库存盘点 → 库内调拨 | `tests/test_zz_vertical_slice_wh_cycle_transfer_chain.py` |
 | `production-quality-v1` | 质量检验 → 批次放行 | `tests/test_zz_vertical_slice_production_quality_chain.py` |
 
@@ -70,6 +73,17 @@ poetry run pytest \
 
 契约校验：`tests/test_zz_vertical_slice_finance_registry_contract.py`。
 
+## `finance-trial-report-v1` 逐步
+
+| step | org_path | skill_id | rule_version | planner_action | 实现文件 |
+|-----:|----------|----------|--------------|----------------|----------|
+| 0 | `/智维通/城市乳业/财务中心/试算平衡` | `fin_trial_balance` | `fin-trial-balance-v1` | `trial_balance` | `skills/finance_center/trial_balance.py` |
+| 1 | `/智维通/城市乳业/财务中心/报表快照` | `fin_report_snapshot` | `fin-report-gate-v1` | `publish_report_snapshot` | `skills/finance_center/report_snapshot.py` |
+
+默认演示参数见 `FINANCE_TRIAL_REPORT_DEFAULT_PARAMS`（与 `tests/test_zz_vertical_slice_finance_trial_report_chain.py` 内计划一致）。
+
+契约校验：`tests/test_zz_vertical_slice_finance_trial_registry_contract.py`。
+
 ## `production-quality-v1` 逐步
 
 | step | org_path | skill_id | rule_version | planner_action | 实现文件 |
@@ -94,11 +108,11 @@ poetry run pytest \
 
 ## L2（可对账）扩展
 
-链上叶岗在 **`summary`** 中额外提供 **`l2_reconcile`**、**`exception_code`**、**`manual_handoff`**（手册技能成熟度 L2），`rule_version` 不变。仓储主链：**`W_OUTBOUND_SHORTFALL`** 等；**补链 `warehouse-cycle-transfer-v1`**：**`W_CYCLE_COUNT_VARIANCE`**、**`W_TRANSFER_SHORTFALL`**；**补链 `production-quality-v1`**：**`W_QC_BATCH_REJECT`**、**`W_RELEASE_BLOCKED`**；财务：**`W_FIN_AR_LINE_MISMATCH`** / **`W_FIN_AP_LINE_MISMATCH`**。字段含义与运维处置见 **`docs/ops-runbook.md`**「主垂直切片 L2」；构建辅助见 **`shared/slice_l2.py`**。
+链上叶岗在 **`summary`** 中额外提供 **`l2_reconcile`**、**`exception_code`**、**`manual_handoff`**（手册技能成熟度 L2），`rule_version` 不变。仓储主链：**`W_OUTBOUND_SHORTFALL`** 等；**补链 `warehouse-cycle-transfer-v1`**：**`W_CYCLE_COUNT_VARIANCE`**、**`W_TRANSFER_SHORTFALL`**；**补链 `production-quality-v1`**：**`W_QC_BATCH_REJECT`**、**`W_RELEASE_BLOCKED`**；财务：**`W_FIN_AR_LINE_MISMATCH`** / **`W_FIN_AP_LINE_MISMATCH`**；**补链 `finance-trial-report-v1`**：**`W_TRIAL_IMBALANCE`**、**`W_FIN_REPORT_BLOCKED`**。字段含义与运维处置见 **`docs/ops-runbook.md`**「主垂直切片 L2」；构建辅助见 **`shared/slice_l2.py`**。
 
 ## 契约校验
 
-`tests/test_zz_vertical_slice_registry_contract.py`（供应链）、`tests/test_zz_vertical_slice_finance_registry_contract.py`（财务）、`tests/test_zz_vertical_slice_wh_registry_contract.py`（仓储补链）、`tests/test_zz_vertical_slice_production_quality_registry_contract.py`（生产补链）在运行时比对本表与各 Skill 模块导出的 `ORG_PATH` / `SKILL_ID` / `RULE_VERSION`，漂移即失败。
+`tests/test_zz_vertical_slice_registry_contract.py`（供应链）、`tests/test_zz_vertical_slice_finance_registry_contract.py`（应收应付）、`tests/test_zz_vertical_slice_finance_trial_registry_contract.py`（试算报表）、`tests/test_zz_vertical_slice_wh_registry_contract.py`（仓储补链）、`tests/test_zz_vertical_slice_production_quality_registry_contract.py`（生产补链）在运行时比对本表与各 Skill 模块导出的 `ORG_PATH` / `SKILL_ID` / `RULE_VERSION`，漂移即失败。
 
 ## 修订流程
 

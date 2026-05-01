@@ -142,6 +142,127 @@ def test_payable_reconciliation_skill_sandbox() -> None:
     asyncio.run(_run())
 
 
+def test_trial_balance_skill_sandbox() -> None:
+    async def _run() -> None:
+        def factory():
+            from skills.finance_center.trial_balance import TrialBalanceSkill
+
+            return TrialBalanceSkill()
+
+        rep = await run_sandbox(
+            [
+                _envelope(
+                    "fin_trial_balance",
+                    "/智维通/城市乳业/财务中心/试算平衡",
+                    "tb1",
+                    {"debits": [1000.0, 500.0], "credits": [800.0, 700.0]},
+                ),
+                _envelope(
+                    "fin_trial_balance",
+                    "/智维通/城市乳业/财务中心/试算平衡",
+                    "tb1b",
+                    {},
+                ),
+                _envelope(
+                    "fin_trial_balance",
+                    "/智维通/城市乳业/财务中心/试算平衡",
+                    "tb1c",
+                    {"debits": [100.0], "credits": [50.0]},
+                ),
+                _envelope(
+                    "fin_trial_balance",
+                    "/智维通/城市乳业/财务中心/试算平衡",
+                    "tb1d",
+                    {"debits": [42.0], "credits": [42.0]},
+                ),
+                _envelope(
+                    "fin_trial_balance",
+                    "/智维通/城市乳业/财务中心/试算平衡",
+                    "tb1e",
+                    {"debits": [0.1, 0.2], "credits": [0.15, 0.15]},
+                ),
+            ],
+            skill_factory=factory,
+            coverage_skill_module="skills.finance_center.trial_balance",
+        )
+        rv = "fin-trial-balance-v1"
+        assert rep.passed == 5 and rep.failed == 0
+        assert rep.coverage_percent >= 90.0
+        assert rep.cases[0].result is not None
+        assert rep.cases[0].result["rule_version"] == rv
+        assert rep.cases[0].result["tb_balanced"] is True
+        assert rep.cases[0].result["summary"]["exception_code"] is None
+        assert rep.cases[1].result["debit_total"] == 0.0
+        assert rep.cases[1].result["tb_balanced"] is True
+        assert rep.cases[2].result["tb_balanced"] is False
+        assert rep.cases[2].result["summary"]["exception_code"] == "W_TRIAL_IMBALANCE"
+        assert rep.cases[3].result["tb_balanced"] is True
+        assert rep.cases[4].result["debit_total"] == 0.3
+        assert rep.cases[4].result["credit_total"] == 0.3
+
+    asyncio.run(_run())
+
+
+def test_report_snapshot_skill_sandbox() -> None:
+    async def _run() -> None:
+        def factory():
+            from skills.finance_center.report_snapshot import ReportSnapshotSkill
+
+            return ReportSnapshotSkill()
+
+        rep = await run_sandbox(
+            [
+                _envelope(
+                    "fin_report_snapshot",
+                    "/智维通/城市乳业/财务中心/报表快照",
+                    "rs1",
+                    {"period_id": "P-Q1", "trial_cleared": True},
+                ),
+                _envelope(
+                    "fin_report_snapshot",
+                    "/智维通/城市乳业/财务中心/报表快照",
+                    "rs1b",
+                    {},
+                ),
+                _envelope(
+                    "fin_report_snapshot",
+                    "/智维通/城市乳业/财务中心/报表快照",
+                    "rs1c",
+                    {"period_id": "P-X", "trial_cleared": False},
+                ),
+                _envelope(
+                    "fin_report_snapshot",
+                    "/智维通/城市乳业/财务中心/报表快照",
+                    "rs1d",
+                    {"trial_cleared": True},
+                ),
+                _envelope(
+                    "fin_report_snapshot",
+                    "/智维通/城市乳业/财务中心/报表快照",
+                    "rs1e",
+                    {"trial_cleared": False},
+                ),
+            ],
+            skill_factory=factory,
+            coverage_skill_module="skills.finance_center.report_snapshot",
+        )
+        rv = "fin-report-gate-v1"
+        assert rep.passed == 5 and rep.failed == 0
+        assert rep.coverage_percent >= 90.0
+        assert rep.cases[0].result is not None
+        assert rep.cases[0].result["rule_version"] == rv
+        assert rep.cases[0].result["report_publishable"] is True
+        assert rep.cases[0].result["summary"]["exception_code"] is None
+        assert rep.cases[1].result["trial_cleared"] is False
+        assert rep.cases[1].result["summary"]["exception_code"] == "W_FIN_REPORT_BLOCKED"
+        assert rep.cases[2].result["report_publishable"] is False
+        assert rep.cases[2].result["summary"]["exception_code"] == "W_FIN_REPORT_BLOCKED"
+        assert rep.cases[3].result["report_publishable"] is True
+        assert rep.cases[4].result["summary"]["exception_code"] == "W_FIN_REPORT_BLOCKED"
+
+    asyncio.run(_run())
+
+
 def test_production_scheduling_skill_sandbox() -> None:
     async def _run() -> None:
         def factory():
@@ -743,6 +864,8 @@ def test_zz_phase2_org_path_exports() -> None:
     """Smoke last: avoid importing department modules before sandbox coverage tests."""
     from skills.finance_center.payable_reconciliation import ORG_PATH as p0
     from skills.finance_center.receivable_reconciliation import ORG_PATH as p1
+    from skills.finance_center.report_snapshot import ORG_PATH as p1rs
+    from skills.finance_center.trial_balance import ORG_PATH as p1tb
     from skills.production_center.batch_release import ORG_PATH as p2rel
     from skills.production_center.material_requirement import ORG_PATH as p2
     from skills.production_center.production_scheduling import ORG_PATH as p2b
@@ -755,6 +878,8 @@ def test_zz_phase2_org_path_exports() -> None:
 
     assert p0 == "/智维通/城市乳业/财务中心/应付对账"
     assert p1 == "/智维通/城市乳业/财务中心/应收对账"
+    assert p1tb == "/智维通/城市乳业/财务中心/试算平衡"
+    assert p1rs == "/智维通/城市乳业/财务中心/报表快照"
     assert p2b == "/智维通/城市乳业/生产中心/排产"
     assert p2 == "/智维通/城市乳业/生产中心/物料需求"
     assert p2qc == "/智维通/城市乳业/生产中心/质量检验"

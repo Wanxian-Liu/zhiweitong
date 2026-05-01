@@ -4,7 +4,8 @@
 由 ``tests/test_zz_vertical_slice_registry_contract.py``、
 ``tests/test_zz_vertical_slice_finance_registry_contract.py``、
 ``tests/test_zz_vertical_slice_wh_registry_contract.py``、
-``tests/test_zz_vertical_slice_production_quality_registry_contract.py`` 校验。
+``tests/test_zz_vertical_slice_production_quality_registry_contract.py``、
+``tests/test_zz_vertical_slice_finance_trial_registry_contract.py`` 校验。
 
 新增切片时：在此追加 ``VerticalSliceStep``，并同步 ``docs/vertical-slices.md``。
 """
@@ -139,6 +140,43 @@ def finance_ar_ap_org_paths() -> frozenset[str]:
 
 def finance_ar_ap_rule_version_by_org_path() -> dict[str, str]:
     return {s.org_path: s.rule_version for s in FINANCE_AR_AP_CHAIN}
+
+
+# --- 试算平衡 → 报表快照（财务总账/关账示意小闭环；L1 + L2） ---
+
+SLICE_FINANCE_TRIAL_REPORT_V1: Final = "finance-trial-report-v1"
+
+FINANCE_TRIAL_REPORT_CHAIN: Final[tuple[VerticalSliceStep, ...]] = (
+    VerticalSliceStep(
+        0,
+        "/智维通/城市乳业/财务中心/试算平衡",
+        "fin_trial_balance",
+        "fin-trial-balance-v1",
+        "trial_balance",
+        "skills/finance_center/trial_balance.py",
+    ),
+    VerticalSliceStep(
+        1,
+        "/智维通/城市乳业/财务中心/报表快照",
+        "fin_report_snapshot",
+        "fin-report-gate-v1",
+        "publish_report_snapshot",
+        "skills/finance_center/report_snapshot.py",
+    ),
+)
+
+FINANCE_TRIAL_REPORT_DEFAULT_PARAMS: Final[tuple[dict[str, Any], ...]] = (
+    {"debits": [1000.0, 500.0], "credits": [800.0, 700.0]},
+    {"period_id": "FY25-P04", "trial_cleared": True},
+)
+
+
+def finance_trial_report_org_paths() -> frozenset[str]:
+    return frozenset(s.org_path for s in FINANCE_TRIAL_REPORT_CHAIN)
+
+
+def finance_trial_report_rule_version_by_org_path() -> dict[str, str]:
+    return {s.org_path: s.rule_version for s in FINANCE_TRIAL_REPORT_CHAIN}
 
 
 # --- 质量检验 → 批次放行（生产补链小闭环；L1 + L2） ---

@@ -9,6 +9,8 @@ from __future__ import annotations
 def test_phase2_rule_version_constants() -> None:
     from skills.finance_center.payable_reconciliation import RULE_VERSION as ap_rv
     from skills.finance_center.receivable_reconciliation import RULE_VERSION as ar_rv
+    from skills.finance_center.report_snapshot import RULE_VERSION as rs_rv
+    from skills.finance_center.trial_balance import RULE_VERSION as tb_fin_rv
     from skills.production_center.batch_release import RULE_VERSION as br_rv
     from skills.production_center.material_requirement import RULE_VERSION as mrp_rv
     from skills.production_center.production_scheduling import RULE_VERSION as sched_rv
@@ -21,6 +23,8 @@ def test_phase2_rule_version_constants() -> None:
 
     assert ar_rv == "fin-ar-net-v1"
     assert ap_rv == "fin-ap-net-v1"
+    assert tb_fin_rv == "fin-trial-balance-v1"
+    assert rs_rv == "fin-report-gate-v1"
     assert mrp_rv == "mrp-single-level-v1"
     assert sched_rv == "sched-demand-to-plan-v1"
     assert qc_rv == "qc-defect-threshold-v1"
@@ -55,6 +59,16 @@ def test_golden_wh_cycle_transfer_default_params_match_vertical_slice() -> None:
     cy, tr = WH_CYCLE_TRANSFER_DEFAULT_PARAMS
     assert cy["book_qty"] == cy["counted_qty"]
     assert tr["quantity"] <= tr["available_at_source"]
+
+
+def test_golden_finance_trial_report_default_params_match_vertical_slice() -> None:
+    from shared.vertical_slices import FINANCE_TRIAL_REPORT_DEFAULT_PARAMS
+
+    tb, rs = FINANCE_TRIAL_REPORT_DEFAULT_PARAMS
+    d = sum(tb["debits"])
+    c = sum(tb["credits"])
+    assert round(d, 2) == round(c, 2)
+    assert rs["trial_cleared"] is True
 
 
 def test_golden_finance_ar_ap_default_params_match_vertical_slice() -> None:
