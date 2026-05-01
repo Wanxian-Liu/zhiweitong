@@ -1,4 +1,8 @@
-"""Load settings from environment (.env via python-dotenv optional in Phase 0.1)."""
+"""Load settings from process environment.
+
+变量清单与说明见仓库根目录 ``.env.example`` 与 ``docs/ops-runbook.md``。
+（未内置自动加载 ``.env``；由 shell/编排平台注入，或自行 ``source``。）
+"""
 
 from __future__ import annotations
 

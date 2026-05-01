@@ -14,6 +14,8 @@
 
 ## 2. 环境变量（摘要）
 
+本地可复制 **`.env.example`** → **`.env`**，按注释取消注释并填写；运行时仍依赖进程环境（若未使用 shell 自动 `export`，可用 `set -a; source .env; set +a` 或部署平台注入）。
+
 | 变量 | 用途 | 缺省 |
 |------|------|------|
 | `ZHIWEITONG_DATABASE_URL` | 异步 SQLAlchemy 连接串（State 等） | `sqlite+aiosqlite:///./var/zhiweitong.db` |

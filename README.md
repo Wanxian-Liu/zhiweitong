@@ -6,6 +6,7 @@
 - **旧原型（不继续维护本仓）**：`~/.openclaw/skills/zhihuitong` 等为历史路径，标识 `zhihuitong` 与拼音不一致，仅作迁移参考，见 `docs/LEGACY.md`。
 
 开发入口：`CLAUDE.md`、`docs/event_topics.md`；本地数据与备份见 **`docs/ops-runbook.md`**。  
+环境变量骨架：**`.env.example`**（复制为 `.env` 后填写，勿提交 `.env`）。  
 模块级 Cursor 提示词（Phase 0–3）仍可在记忆殿堂调阅：`~/.openclaw/memory-vault/data/projects/zhihuitong/OpenCLAW-Cursor模块提示词手册.md`（文中目录已改为本仓库名）。
 
 ## CLI（摘要）

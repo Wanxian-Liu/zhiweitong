@@ -16,7 +16,7 @@
 
 | 小节 | 要求摘要 | 状态 | 优先级 |
 |------|----------|------|--------|
-| 0.1 | Poetry、依赖、目录、`config/settings`、`shared/models` & `errors` | 基本具备；`.env` 以本地为准 | P2：补 `.env.example` 与密钥管理说明 |
+| 0.1 | Poetry、依赖、目录、`config/settings`、`shared/models` & `errors` | 基本具备；`.env` 以本地为准 | P2：密钥管理 SOP（仓库已提供 **`.env.example`**） |
 | 0.2 | 异步 EventBus、通配订阅、subscription_id | 已实现 | — |
 | 0.3 | StateManager 异步 SQLite | 已实现 | P0：产线 DB 策略（连接池、迁移、备份） |
 | 0.4 | OrgTree、路径前缀 | 已实现 | P1：与**完整组织树数据**（配置/DB）对齐 |
@@ -70,7 +70,7 @@
 2. **P0 配置与密钥**：环境分层（dev/stage/prod）、密钥不落盘、轮换策略。
 3. **P0 部署模型**：单进程 vs 多副本；EventBus 从内存队列迁 **Redis Pub/Sub**（手册已预留）的时机与契约。
 4. **P0 安全**：总线鉴权、敏感 topic、知识库与 State 的访问边界。
-5. **P1 灾备**：SQLite/Chroma 备份恢复演练；State 与知识库一致性说明（起步见 **`docs/ops-runbook.md`**）。  
+5. **P1 灾备**：SQLite/Chroma 备份恢复演练；State 与知识库一致性说明（起步见 **`docs/ops-runbook.md`**）。
 6. **P2 开发者体验**：`README` 一键启动、Makefile/poetry 脚本、API/事件契约的 OpenAPI 或表格维护。
 
 ---
