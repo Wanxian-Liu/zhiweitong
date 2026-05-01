@@ -8,13 +8,21 @@ import inspect
 import os
 import re
 import sys
+import time
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
 import typer
 
-from cli.promotion import build_preview_text, find_skill_py, parse_promotion_snapshot
+from cli.promotion import (
+    build_preview_text,
+    find_skill_py,
+    format_apply_unified_diff,
+    merged_execution_from_snapshot,
+    parse_promotion_snapshot,
+    splice_merged_execution_into_skill_source,
+)
 from cli.generators import (
     ensure_org_path,
     parse_batch_csv,
@@ -56,6 +64,50 @@ def _find_skill_class(mod: ModuleType) -> type[SkillBase]:
         raise typer.BadParameter(f"no SkillBase subclass with META in {mod.__file__!r}")
     candidates.sort(key=lambda c: c.__name__)
     return candidates[0]
+
+
+def _promote_resolve(
+    doc_id: str,
+    chroma_path: Path | None,
+    skill_file: Path | None,
+) -> tuple[dict[str, Any], Path, type[SkillBase]]:
+    """Load promotion snapshot from Chroma and resolve the Skill module + class."""
+    root = _repo_root()
+    cp = chroma_path
+    if cp is None:
+        envp = os.environ.get("ZHIWEITONG_CHROMA_PATH")
+        cp = Path(envp) if envp else root / "var" / "chroma"
+    cp = cp.resolve()
+    if not cp.is_dir():
+        raise typer.BadParameter(f"Chroma persist directory not found: {cp}")
+
+    async def _run_async() -> tuple[dict[str, Any], str]:
+        ks = KnowledgeStore(persist_directory=cp)
+        row = await ks.get_by_id(doc_id.strip())
+        if row is None:
+            raise typer.BadParameter(f"unknown doc_id: {doc_id!r}")
+        snap = parse_promotion_snapshot(row["content"])
+        sid = str(snap.get("target_skill_id") or "").strip()
+        if not sid:
+            raise typer.BadParameter("snapshot missing target_skill_id")
+        return snap, sid
+
+    snap, sid = asyncio.run(_run_async())
+
+    spath: Path
+    if skill_file is not None:
+        spath = skill_file.resolve()
+    else:
+        found = find_skill_py(root, sid)
+        if found is None:
+            raise typer.BadParameter(
+                f"cannot find skills/**/*.py for skill_id={sid!r}; pass --skill-file",
+            )
+        spath = found
+
+    mod = _load_module_from_file(spath)
+    cls = _find_skill_class(mod)
+    return snap, spath, cls
 
 
 def _load_module_from_file(py_file: Path) -> ModuleType:
@@ -188,41 +240,8 @@ def promote_preview_cmd(
     ),
 ) -> None:
     """从 Chroma 中的 promotion 快照生成「合并后的 execution / META」审阅稿（不修改源码）。"""
-    root = _repo_root()
-    cp = chroma_path
-    if cp is None:
-        envp = os.environ.get("ZHIWEITONG_CHROMA_PATH")
-        cp = Path(envp) if envp else root / "var" / "chroma"
-    cp = cp.resolve()
-    if not cp.is_dir():
-        raise typer.BadParameter(f"Chroma persist directory not found: {cp}")
-
-    async def _run_async() -> tuple[dict[str, Any], str]:
-        ks = KnowledgeStore(persist_directory=cp)
-        row = await ks.get_by_id(doc_id.strip())
-        if row is None:
-            raise typer.BadParameter(f"unknown doc_id: {doc_id!r}")
-        snap = parse_promotion_snapshot(row["content"])
-        sid = str(snap.get("target_skill_id") or "").strip()
-        if not sid:
-            raise typer.BadParameter("snapshot missing target_skill_id")
-        return snap, sid
-
-    snap, sid = asyncio.run(_run_async())
-
-    spath: Path
-    if skill_file is not None:
-        spath = skill_file.resolve()
-    else:
-        found = find_skill_py(root, sid)
-        if found is None:
-            raise typer.BadParameter(
-                f"cannot find skills/**/*.py for skill_id={sid!r}; pass --skill-file",
-            )
-        spath = found
-
-    mod = _load_module_from_file(spath)
-    cls = _find_skill_class(mod)
+    snap, spath, cls = _promote_resolve(doc_id, chroma_path, skill_file)
+    sid = str(snap.get("target_skill_id") or "").strip()
     if cls.META.skill_id != sid:
         typer.secho(
             f"warning: file declares skill_id={cls.META.skill_id!r} snapshot has {sid!r}",
@@ -243,6 +262,64 @@ def promote_preview_cmd(
         typer.secho(f"Wrote {out}", fg="green")
     else:
         typer.echo(text)
+
+
+@app.command("promote-apply")
+def promote_apply_cmd(
+    doc_id: str = typer.Option(..., "--doc-id", help="知识库中 evolution promotion 快照的 doc_id"),
+    chroma_path: Path | None = typer.Option(
+        None,
+        "--chroma-path",
+        help="Chroma 持久化目录；默认 $ZHIWEITONG_CHROMA_PATH 或 <repo>/var/chroma",
+    ),
+    skill_file: Path | None = typer.Option(
+        None,
+        "--skill-file",
+        help="Skill 模块 .py；省略则在 skills/ 下按 skill_id 搜索",
+    ),
+    write: bool = typer.Option(
+        False,
+        "--write",
+        help="写入技能文件（先备份为同目录 *.promote-backup-<unix_ts>）；省略则只打印 unified diff",
+    ),
+) -> None:
+    """将快照中的 execution patch 应用到 Skill 源码中的 ``SkillExecution``（默认仅 diff）。"""
+    snap, spath, cls = _promote_resolve(doc_id, chroma_path, skill_file)
+    sid = str(snap.get("target_skill_id") or "").strip()
+    if cls.META.skill_id != sid:
+        typer.secho(
+            f"warning: file declares skill_id={cls.META.skill_id!r} snapshot has {sid!r}",
+            fg="yellow",
+            err=True,
+        )
+
+    merged_ex = merged_execution_from_snapshot(cls, snap)
+    before = spath.read_text(encoding="utf-8")
+    try:
+        after = splice_merged_execution_into_skill_source(before, merged_ex)
+    except ValueError as e:
+        raise typer.BadParameter(str(e)) from e
+
+    if before == after:
+        typer.secho("SkillExecution already matches merged snapshot; nothing to do.", fg="green")
+        return
+
+    try:
+        label = str(spath.relative_to(_repo_root()))
+    except ValueError:
+        label = spath.name
+    diff = format_apply_unified_diff(label, before, after)
+    if not write:
+        typer.echo(diff, nl=False)
+        if not diff.endswith("\n"):
+            typer.echo("")
+        return
+
+    backup = spath.with_name(f"{spath.name}.promote-backup-{int(time.time())}")
+    backup.write_text(before, encoding="utf-8")
+    spath.write_text(after, encoding="utf-8")
+    typer.secho(f"Backup: {backup}", fg="green")
+    typer.secho(f"Wrote: {spath}", fg="green")
 
 
 @app.command("validate")
