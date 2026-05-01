@@ -2,6 +2,13 @@
 
 from core.event_bus import EventBus, topic_matches
 from core.org_tree import REQUIRED_PREFIX, OrgTree
+from core.orchestrator import (
+    GoalReport,
+    Orchestrator,
+    PlanStep,
+    command_topic,
+    result_topic,
+)
 from core.skill_base import (
     AI_CEO,
     SkillBase,
@@ -24,8 +31,12 @@ __all__ = [
     "CoverageError",
     "EventBus",
     "KnowledgeStore",
+    "GoalReport",
+    "Orchestrator",
     "OrgTree",
+    "PlanStep",
     "REQUIRED_PREFIX",
+    "command_topic",
     "SandboxReport",
     "SkillBase",
     "SkillRegistry",
@@ -35,6 +46,7 @@ __all__ = [
     "StubStateManager",
     "json_schema",
     "minimal_skill_meta",
+    "result_topic",
     "run_sandbox",
     "topic_matches",
 ]
