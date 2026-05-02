@@ -32,7 +32,7 @@
 
 ## 文档与提示词
 
-- **事件约定**：`docs/event_topics.md`（修改总线前必须先改此文件）；**表格速查**：`docs/event-contract-summary.md`（含 **主体推进步骤** 拆单清单）。  
+- **事件约定**：`docs/event_topics.md`（修改总线前必须先改此文件）；**表格速查与权威层级、变更顺序**：`docs/event-contract-summary.md`（含与垂直切片的关系及打勾清单）。  
 - **手册完成度与工业级优先级**：`docs/handbook-gap-and-industrialization.md`（含 **「推荐推进顺序（主体 → 流程 → 快消与运维）」**）。  
 - **Ralph 式持续开发（单任务迭代 + 客观验收）**：`docs/ralph-loop.md`；提交前本地建议 **`make verify`**（与 CI 覆盖率门禁一致）。  
 - **进化批准落地（工业级流程）**：`docs/evolution-promotion-professional-plan.md`。  

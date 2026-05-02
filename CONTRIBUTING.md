@@ -1,6 +1,7 @@
 # 贡献指南（zhiweitong）
 
-工程宪法见根目录 **`CLAUDE.md`**；契约与总线见 **`docs/event_topics.md`**（**修改总线或信封字段必须先改此文件，再改实现**）。
+工程宪法见根目录 **`CLAUDE.md`**；契约与总线见 **`docs/event_topics.md`**（**修改总线或信封字段必须先改此文件，再改实现**）。  
+**表格速查与变更顺序清单**：**`docs/event-contract-summary.md`**（与 `event_topics` 冲突时以 **`event_topics.md`** 为准）。
 
 ## 环境与命令
 
