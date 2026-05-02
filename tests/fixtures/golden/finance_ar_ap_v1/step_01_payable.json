@@ -1,0 +1,24 @@
+{
+  "case_id": "fin_ar_ap_v1_step1_ap",
+  "vertical_slice": "finance-ar-ap-v1",
+  "step_index": 1,
+  "skill_id": "fin_payable_reconciliation",
+  "org_path": "/智维通/城市乳业/财务中心/应付对账",
+  "correlation_id": "golden-fin-ar-ap-s1",
+  "params": {
+    "bills": [200.0, 80.0],
+    "payments": [50.0, 0.0]
+  },
+  "expected_subset": {
+    "ok": true,
+    "rule_version": "fin-ap-net-v1",
+    "payable_total": 230.0,
+    "discrepancy_count": 0,
+    "summary": {
+      "l2_reconcile": {
+        "grain": "ap_net_snapshot"
+      },
+      "exception_code": null
+    }
+  }
+}
