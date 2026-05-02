@@ -17,6 +17,7 @@ from core.skill_base import (
     SkillMeta,
     json_schema,
 )
+from shared.integration_client import extra_headers_from_payload, merge_json_int_override
 from shared.models import EventEnvelope
 from shared.slice_l2 import l2_reconcile_block
 
@@ -59,7 +60,12 @@ class BatchReleaseSkill(SkillBase):
             input_schema=json_schema(BatchReleaseInput),
             output_schema=json_schema(BatchReleaseOutput),
             required_input_fields=["correlation_id"],
-            optional_input_fields=["payload.batch_id", "payload.qc_cleared"],
+            optional_input_fields=[
+                "payload.batch_id",
+                "payload.qc_cleared",
+                "payload.external_qc_cleared_url",
+                "payload.external_request_headers",
+            ],
             error_codes=["E_PROD_RELEASE_INVALID_PAYLOAD", "W_RELEASE_BLOCKED"],
         ),
         execution=SkillExecution(
@@ -88,6 +94,17 @@ class BatchReleaseSkill(SkillBase):
         payload = effective_skill_payload(dict(req.payload))
         batch_id = str(payload.get("batch_id", "BATCH-DEFAULT"))
         qc_cleared = bool(payload.get("qc_cleared", False))
+        fb = 1 if qc_cleared else 0
+        ext_url = str(payload.get("external_qc_cleared_url") or "").strip()
+        gate, l3_integration = await merge_json_int_override(
+            ext_url,
+            correlation_id=req.correlation_id,
+            field="qc_cleared",
+            fallback=fb,
+            mode="mes_qc_gate_lookup",
+            extra_headers=extra_headers_from_payload(payload),
+        )
+        qc_cleared = gate > 0
         release_committed = qc_cleared
 
         summary = {
@@ -108,6 +125,8 @@ class BatchReleaseSkill(SkillBase):
                 else None
             ),
         }
+        if l3_integration:
+            summary["l3_integration"] = l3_integration
         entity = f"{self.meta.org_path}/{self.meta.skill_id}/{req.correlation_id}"
         await self._state.save_state(entity, summary, self.meta.skill_id)
 

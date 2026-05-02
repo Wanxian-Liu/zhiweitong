@@ -17,6 +17,7 @@ from core.skill_base import (
     SkillMeta,
     json_schema,
 )
+from shared.integration_client import extra_headers_from_payload, merge_json_float_override
 from shared.models import EventEnvelope
 from shared.slice_l2 import l2_reconcile_block
 
@@ -58,7 +59,12 @@ class PayableReconciliationSkill(SkillBase):
             input_schema=json_schema(PayableReconciliationInput),
             output_schema=json_schema(PayableReconciliationOutput),
             required_input_fields=["correlation_id"],
-            optional_input_fields=["payload.bills", "payload.payments"],
+            optional_input_fields=[
+                "payload.bills",
+                "payload.payments",
+                "payload.external_payable_total_url",
+                "payload.external_request_headers",
+            ],
             error_codes=["E_FIN_PAYABLE_INVALID_PAYLOAD", "W_FIN_AP_LINE_MISMATCH"],
         ),
         execution=SkillExecution(
@@ -91,6 +97,15 @@ class PayableReconciliationSkill(SkillBase):
         bill_sum = float(sum(float(x) for x in bills)) if isinstance(bills, list) else 0.0
         pay_sum = float(sum(float(x) for x in payments)) if isinstance(payments, list) else 0.0
         payable_total = round(bill_sum - pay_sum, 2)
+        ext_ap = str(payload.get("external_payable_total_url") or "").strip()
+        payable_total, l3_integration = await merge_json_float_override(
+            ext_ap,
+            correlation_id=req.correlation_id,
+            field="payable_total",
+            fallback=payable_total,
+            mode="fin_ap_net_lookup",
+            extra_headers=extra_headers_from_payload(payload),
+        )
         discrepancy_count = 0
         if isinstance(bills, list) and isinstance(payments, list) and len(bills) != len(payments):
             discrepancy_count = abs(len(bills) - len(payments))
@@ -114,6 +129,8 @@ class PayableReconciliationSkill(SkillBase):
                 else None
             ),
         }
+        if l3_integration:
+            summary["l3_integration"] = l3_integration
         entity = f"{self.meta.org_path}/{self.meta.skill_id}/{req.correlation_id}"
         await self._state.save_state(
             entity,

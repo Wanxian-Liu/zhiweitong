@@ -6,6 +6,7 @@
 
 - **宪法**：根目录 **`CLAUDE.md`**（无状态 Skill、仅 Event Bus、`supervisor=ai_ceo`、`org_path` 前缀、先改 `docs/event_topics.md` 再改总线等）——**每轮开发前扫一眼，做完对照检查**。
 - **计划 backlog**：**`docs/handbook-gap-and-industrialization.md`** —— **Phase 0–3** 表格中优先级 **P2** 与 **Phase 2 横线扩岗** 为持续迭代；单轮任务可从 **P2**、**路线图** 或 **垂直切片加深** 中取**下一项**。封版范围内的 **「—」** 行不必再拆任务。
+- **主体 → 流程 → 快消与运维**：时间维度上优先保证 **垂直切片 + core**（主体），再固化 **本文件单轮节奏 + promote 流程**；**快消板块**与 **运维硬化**（ops-runbook / 路线图 P0）宜 **分里程碑后置**，详见 **`docs/handbook-gap-and-industrialization.md`**「**推荐推进顺序（主体 → 流程 → 快消与运维）**」。
 
 ## 我困了 / 换会话时，能否「自动接着做」？
 
@@ -29,7 +30,8 @@
 
 ```text
 @CLAUDE.md @docs/handbook-gap-and-industrialization.md @docs/ralph-loop.md
-仓库 zhiweitong。严格 OpenCLAW。从 handbook-gap（P2 / 路线图 / Phase 2 切片）里选「下一项」单任务实现；动总线则先 event_topics.md。
+仓库 zhiweitong。严格 OpenCLAW。优先主体（垂直切片 / core）；快消与运维分里程碑后置（见 handbook-gap「推荐推进顺序」）。
+从 handbook-gap（P2 / 路线图 / Phase 2 切片）里选「下一项」单任务实现；动总线则先 event_topics.md。
 验收：make spine（过程中可随时跑），结束前 make verify 必须通过。
 ```
 
@@ -37,6 +39,7 @@
 
 | 命令 | 用途 |
 |------|------|
+| `make dev` | `poetry install` + **`make spine`**（本地 bootstrap / 日常心跳） |
 | `make spine` | 官方主干回归（快）：多切片 E2E + 注册表契约（见 vertical-slices） |
 | `make test` | 全量 pytest |
 | `make verify` | 全量 pytest + **`core/*` ≥85%** + **`skills/quick_consumption/*.py` ≥90%**（对齐 CI） |

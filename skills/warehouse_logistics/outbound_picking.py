@@ -17,6 +17,7 @@ from core.skill_base import (
     SkillMeta,
     json_schema,
 )
+from shared.integration_client import extra_headers_from_payload, merge_json_int_override
 from shared.models import EventEnvelope
 from shared.slice_l2 import l2_reconcile_block
 
@@ -61,7 +62,13 @@ class OutboundPickingSkill(SkillBase):
             input_schema=json_schema(OutboundPickingInput),
             output_schema=json_schema(OutboundPickingOutput),
             required_input_fields=["correlation_id"],
-            optional_input_fields=["payload.sku", "payload.requested_qty", "payload.picked_qty"],
+            optional_input_fields=[
+                "payload.sku",
+                "payload.requested_qty",
+                "payload.picked_qty",
+                "payload.external_picked_qty_url",
+                "payload.external_request_headers",
+            ],
             error_codes=["E_WH_OUTBOUND_INVALID_PAYLOAD", "W_OUTBOUND_SHORTFALL"],
         ),
         execution=SkillExecution(
@@ -91,6 +98,15 @@ class OutboundPickingSkill(SkillBase):
         sku = str(payload.get("sku", "SKU-DEFAULT"))
         requested_qty = int(payload.get("requested_qty", 0))
         picked_qty = int(payload.get("picked_qty", 0))
+        ext_url = str(payload.get("external_picked_qty_url") or "").strip()
+        picked_qty, l3_integration = await merge_json_int_override(
+            ext_url,
+            correlation_id=req.correlation_id,
+            field="picked_qty",
+            fallback=picked_qty,
+            mode="wms_picked_qty_lookup",
+            extra_headers=extra_headers_from_payload(payload),
+        )
         shortfall = max(0, requested_qty - picked_qty)
         pick_complete = picked_qty >= requested_qty
 
@@ -114,6 +130,8 @@ class OutboundPickingSkill(SkillBase):
                 else None
             ),
         }
+        if l3_integration:
+            summary["l3_integration"] = l3_integration
         entity = f"{self.meta.org_path}/{self.meta.skill_id}/{req.correlation_id}"
         await self._state.save_state(entity, summary, self.meta.skill_id)
 

@@ -17,6 +17,7 @@ from core.skill_base import (
     SkillMeta,
     json_schema,
 )
+from shared.integration_client import extra_headers_from_payload, merge_json_int_override
 from shared.models import EventEnvelope
 from shared.slice_l2 import l2_reconcile_block
 
@@ -59,7 +60,12 @@ class ReportSnapshotSkill(SkillBase):
             input_schema=json_schema(ReportSnapshotInput),
             output_schema=json_schema(ReportSnapshotOutput),
             required_input_fields=["correlation_id"],
-            optional_input_fields=["payload.period_id", "payload.trial_cleared"],
+            optional_input_fields=[
+                "payload.period_id",
+                "payload.trial_cleared",
+                "payload.external_trial_cleared_url",
+                "payload.external_request_headers",
+            ],
             error_codes=["E_FIN_REPORT_INVALID_PAYLOAD", "W_FIN_REPORT_BLOCKED"],
         ),
         execution=SkillExecution(
@@ -88,6 +94,17 @@ class ReportSnapshotSkill(SkillBase):
         payload = effective_skill_payload(dict(req.payload))
         period_id = str(payload.get("period_id", "PERIOD-DEFAULT"))
         trial_cleared = bool(payload.get("trial_cleared", False))
+        fb = 1 if trial_cleared else 0
+        ext_url = str(payload.get("external_trial_cleared_url") or "").strip()
+        gate, l3_integration = await merge_json_int_override(
+            ext_url,
+            correlation_id=req.correlation_id,
+            field="trial_cleared",
+            fallback=fb,
+            mode="fin_report_trial_gate_lookup",
+            extra_headers=extra_headers_from_payload(payload),
+        )
+        trial_cleared = gate > 0
         report_publishable = trial_cleared
 
         summary = {
@@ -108,6 +125,8 @@ class ReportSnapshotSkill(SkillBase):
                 else None
             ),
         }
+        if l3_integration:
+            summary["l3_integration"] = l3_integration
         entity = f"{self.meta.org_path}/{self.meta.skill_id}/{req.correlation_id}"
         await self._state.save_state(entity, summary, self.meta.skill_id)
 

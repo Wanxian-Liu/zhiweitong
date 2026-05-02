@@ -17,6 +17,7 @@ from core.skill_base import (
     SkillMeta,
     json_schema,
 )
+from shared.integration_client import extra_headers_from_payload, merge_json_int_override
 from shared.models import EventEnvelope
 from shared.slice_l2 import l2_reconcile_block
 
@@ -69,6 +70,8 @@ class MaterialRequirementSkill(SkillBase):
                 "payload.planned_fg_units",
                 "payload.raw_per_fg",
                 "payload.raw_stock",
+                "payload.external_raw_stock_url",
+                "payload.external_request_headers",
             ],
             error_codes=["E_PROD_MRP_INVALID_PAYLOAD", "W_MRP_NET_SHORTAGE"],
         ),
@@ -100,6 +103,16 @@ class MaterialRequirementSkill(SkillBase):
         planned_fg = max(int(payload.get("planned_fg_units", 0)), 0)
         raw_per = max(int(payload.get("raw_per_fg", 1)), 0)
         raw_stock = max(int(payload.get("raw_stock", 0)), 0)
+        ext_url = str(payload.get("external_raw_stock_url") or "").strip()
+        raw_stock, l3_integration = await merge_json_int_override(
+            ext_url,
+            correlation_id=req.correlation_id,
+            field="raw_stock",
+            fallback=raw_stock,
+            mode="wms_raw_stock_lookup",
+            extra_headers=extra_headers_from_payload(payload),
+        )
+
         required_raw_qty = planned_fg * raw_per
         shortage_qty = max(0, required_raw_qty - raw_stock)
         mrp_feasible = raw_stock >= required_raw_qty
@@ -128,6 +141,8 @@ class MaterialRequirementSkill(SkillBase):
                 else None
             ),
         }
+        if l3_integration:
+            summary["l3_integration"] = l3_integration
         entity = f"{self.meta.org_path}/{self.meta.skill_id}/{req.correlation_id}"
         await self._state.save_state(entity, summary, self.meta.skill_id)
 

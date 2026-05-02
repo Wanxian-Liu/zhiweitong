@@ -11,6 +11,11 @@
 | **OpenCLAW** | 架构/契约名称（文档用语），**不是**本仓库目录名 |
 | **zhihuitong** | 仅指 **旧代码路径**（历史拼写），新代码禁止新增该标识 |
 
+## 主仓库（真源）
+
+- **仓库身份**：以本目录 **`git remote -v`** 所示的 **`origin`**（GitHub **`Wanxian-Liu/zhiweitong`**）为准；代码、`docs/`、**`make verify`**、PR 均针对该远程，**不**以 OpenClaw 安装目录下的副本为主。
+- **本地工作副本**：在任意路径 **clone 一次** 作为日常修改目录（示例 **`~/projects/zhiweitong`**，与包名一致便于记忆）。**不要**在 **`~/.openclaw/skills/zhihuitong`** 等与技能挂载相关的路径当作主工程长期双改；需要时从该 clone **单向**同步到 OpenClaw。
+
 ## OpenCLAW 与仓库独立性
 
 - **OpenCLAW** 在本仓库指 **架构契约**（无状态 Skill、仅 Event Bus、`org_path` 前缀、`supervisor=ai_ceo` 等），**不是**必须随附的第三方「大一统运行时」或封闭平台。
@@ -27,11 +32,12 @@
 
 ## 文档与提示词
 
-- **事件约定**：`docs/event_topics.md`（修改总线前必须先改此文件）。  
-- **手册完成度与工业级优先级**：`docs/handbook-gap-and-industrialization.md`。  
+- **事件约定**：`docs/event_topics.md`（修改总线前必须先改此文件）；**表格速查**：`docs/event-contract-summary.md`。  
+- **手册完成度与工业级优先级**：`docs/handbook-gap-and-industrialization.md`（含 **「推荐推进顺序（主体 → 流程 → 快消与运维）」**）。  
 - **Ralph 式持续开发（单任务迭代 + 客观验收）**：`docs/ralph-loop.md`；提交前本地建议 **`make verify`**（与 CI 覆盖率门禁一致）。  
 - **进化批准落地（工业级流程）**：`docs/evolution-promotion-professional-plan.md`。  
 - **运维一页纸（Chroma / SQLite / 环境变量 / 备份）**：`docs/ops-runbook.md`。  
+- **垂直切片 L3 外部集成（起步）**：`docs/vertical-slice-l3-integration.md`。  
 - **Orchestrator · LLM 规划、重试、超时与日志**：`docs/orchestrator-llm.md`。  
 - **环境变量骨架**：根目录 **`.env.example`**（复制为 `.env`；`load_settings()` 读环境变量，见 `config/settings.py`）。  
 - **CI**：合并前请保持 `.github/workflows/ci.yml` 通过；变更 `skills/**/*.py` 时 PR 会逐项 `zhiweitong validate`。  

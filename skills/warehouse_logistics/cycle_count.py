@@ -17,6 +17,7 @@ from core.skill_base import (
     SkillMeta,
     json_schema,
 )
+from shared.integration_client import extra_headers_from_payload, merge_json_int_override
 from shared.models import EventEnvelope
 from shared.slice_l2 import l2_reconcile_block
 
@@ -61,7 +62,13 @@ class CycleCountSkill(SkillBase):
             input_schema=json_schema(CycleCountInput),
             output_schema=json_schema(CycleCountOutput),
             required_input_fields=["correlation_id"],
-            optional_input_fields=["payload.sku", "payload.book_qty", "payload.counted_qty"],
+            optional_input_fields=[
+                "payload.sku",
+                "payload.book_qty",
+                "payload.counted_qty",
+                "payload.external_counted_qty_url",
+                "payload.external_request_headers",
+            ],
             error_codes=["E_WH_CYCLE_INVALID_PAYLOAD", "W_CYCLE_COUNT_VARIANCE"],
         ),
         execution=SkillExecution(
@@ -91,6 +98,15 @@ class CycleCountSkill(SkillBase):
         sku = str(payload.get("sku", "SKU-DEFAULT"))
         book_qty = int(payload.get("book_qty", 0))
         counted_qty = int(payload.get("counted_qty", 0))
+        ext_url = str(payload.get("external_counted_qty_url") or "").strip()
+        counted_qty, l3_integration = await merge_json_int_override(
+            ext_url,
+            correlation_id=req.correlation_id,
+            field="counted_qty",
+            fallback=counted_qty,
+            mode="wms_counted_qty_lookup",
+            extra_headers=extra_headers_from_payload(payload),
+        )
         variance_qty = counted_qty - book_qty
         cycle_balanced = variance_qty == 0
 
@@ -114,6 +130,8 @@ class CycleCountSkill(SkillBase):
                 else None
             ),
         }
+        if l3_integration:
+            summary["l3_integration"] = l3_integration
         entity = f"{self.meta.org_path}/{self.meta.skill_id}/{req.correlation_id}"
         await self._state.save_state(
             entity,

@@ -17,6 +17,7 @@ from core.skill_base import (
     SkillMeta,
     json_schema,
 )
+from shared.integration_client import extra_headers_from_payload, merge_json_int_override
 from shared.models import EventEnvelope
 from shared.slice_l2 import l2_reconcile_block
 
@@ -59,7 +60,13 @@ class InventoryManagementSkill(SkillBase):
             input_schema=json_schema(InventoryManagementInput),
             output_schema=json_schema(InventoryManagementOutput),
             required_input_fields=["correlation_id"],
-            optional_input_fields=["payload.sku", "payload.quantity_on_hand", "payload.reorder_threshold"],
+            optional_input_fields=[
+                "payload.sku",
+                "payload.quantity_on_hand",
+                "payload.reorder_threshold",
+                "payload.external_quantity_on_hand_url",
+                "payload.external_request_headers",
+            ],
             error_codes=["E_WH_INVALID_PAYLOAD", "I_REORDER_SUGGESTED"],
         ),
         execution=SkillExecution(
@@ -88,6 +95,15 @@ class InventoryManagementSkill(SkillBase):
         payload = effective_skill_payload(dict(req.payload))
         sku = str(payload.get("sku", "SKU-MILK-1L"))
         qoh = int(payload.get("quantity_on_hand", 0))
+        ext_url = str(payload.get("external_quantity_on_hand_url") or "").strip()
+        qoh, l3_integration = await merge_json_int_override(
+            ext_url,
+            correlation_id=req.correlation_id,
+            field="quantity_on_hand",
+            fallback=qoh,
+            mode="wms_quantity_on_hand_lookup",
+            extra_headers=extra_headers_from_payload(payload),
+        )
         threshold = int(payload.get("reorder_threshold", 100))
         reorder_suggested = qoh < threshold
 
@@ -109,6 +125,8 @@ class InventoryManagementSkill(SkillBase):
                 else None
             ),
         }
+        if l3_integration:
+            summary["l3_integration"] = l3_integration
         entity = f"{self.meta.org_path}/{self.meta.skill_id}/{req.correlation_id}"
         await self._state.save_state(entity, summary, self.meta.skill_id)
 

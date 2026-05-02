@@ -18,6 +18,7 @@ from core.skill_base import (
     SkillMeta,
     json_schema,
 )
+from shared.integration_client import extra_headers_from_payload, merge_json_int_override
 from shared.models import EventEnvelope
 from shared.slice_l2 import l2_reconcile_block
 
@@ -60,7 +61,12 @@ class ProductionSchedulingSkill(SkillBase):
             input_schema=json_schema(ProductionSchedulingInput),
             output_schema=json_schema(ProductionSchedulingOutput),
             required_input_fields=["correlation_id"],
-            optional_input_fields=["payload.demand_units", "payload.line_id"],
+            optional_input_fields=[
+                "payload.demand_units",
+                "payload.line_id",
+                "payload.external_planned_units_url",
+                "payload.external_request_headers",
+            ],
             error_codes=["E_PROD_INVALID_PAYLOAD"],
         ),
         execution=SkillExecution(
@@ -91,6 +97,15 @@ class ProductionSchedulingSkill(SkillBase):
         line_id = str(payload.get("line_id", "LINE-A1"))
         batch_id = f"BATCH-{uuid.uuid5(uuid.NAMESPACE_DNS, req.correlation_id).hex[:10].upper()}"
         planned_units = max(demand, 0)
+        ext_url = str(payload.get("external_planned_units_url") or "").strip()
+        planned_units, l3_integration = await merge_json_int_override(
+            ext_url,
+            correlation_id=req.correlation_id,
+            field="planned_units",
+            fallback=planned_units,
+            mode="mes_planned_units_lookup",
+            extra_headers=extra_headers_from_payload(payload),
+        )
 
         summary = {
             "rule_version": RULE_VERSION,
@@ -106,6 +121,8 @@ class ProductionSchedulingSkill(SkillBase):
             "exception_code": None,
             "manual_handoff": None,
         }
+        if l3_integration:
+            summary["l3_integration"] = l3_integration
         entity = f"{self.meta.org_path}/{self.meta.skill_id}/{req.correlation_id}"
         await self._state.save_state(entity, summary, self.meta.skill_id)
 

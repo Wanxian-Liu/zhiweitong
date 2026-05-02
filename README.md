@@ -4,10 +4,23 @@
 
 - **规范名**：OpenCLAW（见《智维通数字员工体系 · OpenCLAW 原生实现规范》）——指**契约与架构**，不是文件夹名。
 - **旧原型（不继续维护本仓）**：`~/.openclaw/skills/zhihuitong` 等为历史路径，标识 `zhihuitong` 与拼音不一致，仅作迁移参考，见 `docs/LEGACY.md`。
+- **主仓库约定**：日常开发与写文档请在 **本 Git 仓库的 clone**（示例路径 **`~/projects/zhiweitong`**）中进行；OpenClaw 技能目录**不是**主源码树。约定说明见 **`CLAUDE.md`**「主仓库（真源）」。
+- **推进顺序**：优先 **主体**（垂直切片 + core）→ **流程**（`docs/ralph-loop.md`、promote）→ **快消与运维** 分里程碑；说明见 **`docs/handbook-gap-and-industrialization.md`**「**推荐推进顺序（主体 → 流程 → 快消与运维）**」。
 
 开发入口：`CLAUDE.md`、`docs/event_topics.md`；本地数据与备份见 **`docs/ops-runbook.md`**。  
 环境变量骨架：**`.env.example`**（复制为 `.env` 后填写，勿提交 `.env`）。  
 模块级 Cursor 提示词（Phase 0–3）仍可在记忆殿堂调阅：`~/.openclaw/memory-vault/data/projects/zhihuitong/OpenCLAW-Cursor模块提示词手册.md`（文中目录已改为本仓库名）。
+
+## 快速开始（一键节奏）
+
+1. **安装**：需 **Python 3.12+**、**Poetry**。在仓库根执行：  
+   `poetry install --no-interaction`
+2. **环境（可选）**：`cp .env.example .env`，按需填写 LLM/Redis 等；跑测试可不建 `.env`（pytest 会跳过加载 `.env`）。
+3. **健康检查**：  
+   - 日常开发：`make dev`（`poetry install` + **`make spine`** 主干垂直切片回归）  
+   - 合并/CI 对齐：`make verify`（全量测试 + `core/*` 与快消 Skill 覆盖率门禁）
+
+事件 topic 与信封的**表格速查**：**`docs/event-contract-summary.md`**（权威约定仍以 **`docs/event_topics.md`** 为准）。
 
 ## 主干回归（官方垂直切片）
 

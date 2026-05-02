@@ -17,6 +17,7 @@ from core.skill_base import (
     SkillMeta,
     json_schema,
 )
+from shared.integration_client import extra_headers_from_payload, merge_json_int_override
 from shared.models import EventEnvelope
 from shared.slice_l2 import l2_reconcile_block
 
@@ -69,6 +70,8 @@ class StockTransferSkill(SkillBase):
                 "payload.to_location",
                 "payload.quantity",
                 "payload.available_at_source",
+                "payload.external_available_at_source_url",
+                "payload.external_request_headers",
             ],
             error_codes=["E_WH_TRANSFER_INVALID_PAYLOAD", "W_TRANSFER_SHORTFALL"],
         ),
@@ -101,6 +104,15 @@ class StockTransferSkill(SkillBase):
         to_location = str(payload.get("to_location", "BIN-DST"))
         quantity = int(payload.get("quantity", 0))
         available_at_source = int(payload.get("available_at_source", 0))
+        ext_url = str(payload.get("external_available_at_source_url") or "").strip()
+        available_at_source, l3_integration = await merge_json_int_override(
+            ext_url,
+            correlation_id=req.correlation_id,
+            field="available_at_source",
+            fallback=available_at_source,
+            mode="wms_available_at_source_lookup",
+            extra_headers=extra_headers_from_payload(payload),
+        )
         shortfall = max(0, quantity - available_at_source)
         transfer_complete = shortfall == 0
 
@@ -126,6 +138,8 @@ class StockTransferSkill(SkillBase):
                 else None
             ),
         }
+        if l3_integration:
+            summary["l3_integration"] = l3_integration
         entity = f"{self.meta.org_path}/{self.meta.skill_id}/{req.correlation_id}"
         await self._state.save_state(entity, summary, self.meta.skill_id)
 

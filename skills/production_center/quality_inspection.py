@@ -17,6 +17,7 @@ from core.skill_base import (
     SkillMeta,
     json_schema,
 )
+from shared.integration_client import extra_headers_from_payload, merge_json_int_override
 from shared.models import EventEnvelope
 from shared.slice_l2 import l2_reconcile_block
 
@@ -66,6 +67,8 @@ class QualityInspectionSkill(SkillBase):
                 "payload.units_inspected",
                 "payload.defect_units",
                 "payload.max_defect_units",
+                "payload.external_defect_units_url",
+                "payload.external_request_headers",
             ],
             error_codes=["E_PROD_QC_INVALID_PAYLOAD", "W_QC_BATCH_REJECT"],
         ),
@@ -97,6 +100,15 @@ class QualityInspectionSkill(SkillBase):
         units_inspected = int(payload.get("units_inspected", 0))
         defect_units = int(payload.get("defect_units", 0))
         max_defect_units = int(payload.get("max_defect_units", 0))
+        ext_url = str(payload.get("external_defect_units_url") or "").strip()
+        defect_units, l3_integration = await merge_json_int_override(
+            ext_url,
+            correlation_id=req.correlation_id,
+            field="defect_units",
+            fallback=defect_units,
+            mode="lims_defect_units_lookup",
+            extra_headers=extra_headers_from_payload(payload),
+        )
         qc_pass = defect_units <= max_defect_units
 
         summary = {
@@ -119,6 +131,8 @@ class QualityInspectionSkill(SkillBase):
                 else None
             ),
         }
+        if l3_integration:
+            summary["l3_integration"] = l3_integration
         entity = f"{self.meta.org_path}/{self.meta.skill_id}/{req.correlation_id}"
         await self._state.save_state(
             entity,

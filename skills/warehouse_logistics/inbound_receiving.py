@@ -17,6 +17,7 @@ from core.skill_base import (
     SkillMeta,
     json_schema,
 )
+from shared.integration_client import extra_headers_from_payload, merge_json_int_override
 from shared.models import EventEnvelope
 from shared.slice_l2 import l2_reconcile_block
 
@@ -61,7 +62,13 @@ class InboundReceivingSkill(SkillBase):
             input_schema=json_schema(InboundReceivingInput),
             output_schema=json_schema(InboundReceivingOutput),
             required_input_fields=["correlation_id"],
-            optional_input_fields=["payload.sku", "payload.ordered_qty", "payload.received_qty"],
+            optional_input_fields=[
+                "payload.sku",
+                "payload.ordered_qty",
+                "payload.received_qty",
+                "payload.external_received_qty_url",
+                "payload.external_request_headers",
+            ],
             error_codes=["E_WH_INBOUND_INVALID_PAYLOAD", "W_INBOUND_SHORTFALL"],
         ),
         execution=SkillExecution(
@@ -91,6 +98,15 @@ class InboundReceivingSkill(SkillBase):
         sku = str(payload.get("sku", "SKU-DEFAULT"))
         ordered_qty = int(payload.get("ordered_qty", 0))
         received_qty = int(payload.get("received_qty", 0))
+        ext_url = str(payload.get("external_received_qty_url") or "").strip()
+        received_qty, l3_integration = await merge_json_int_override(
+            ext_url,
+            correlation_id=req.correlation_id,
+            field="received_qty",
+            fallback=received_qty,
+            mode="wms_received_qty_lookup",
+            extra_headers=extra_headers_from_payload(payload),
+        )
         shortfall = max(0, ordered_qty - received_qty)
         receipt_complete = received_qty >= ordered_qty
 
@@ -114,6 +130,8 @@ class InboundReceivingSkill(SkillBase):
                 else None
             ),
         }
+        if l3_integration:
+            summary["l3_integration"] = l3_integration
         entity = f"{self.meta.org_path}/{self.meta.skill_id}/{req.correlation_id}"
         await self._state.save_state(entity, summary, self.meta.skill_id)
 

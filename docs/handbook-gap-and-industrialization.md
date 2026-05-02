@@ -2,6 +2,13 @@
 
 本文档对照《OpenCLAW · Cursor 模块提示词手册（Phase 0–3）》与当前 **`zhiweitong`** 仓库实现，列出**剩余工作**与**工业级（产线就绪）**优先级，便于按阶段推进而无需先了解各类外围工具。
 
+## 封版与持续迭代（怎么算「开发完」）
+
+- **手册 Phase 0–3**：下表中带 **「—」** 的优先级行视为**已与手册封版范围对齐**（以测试与 `make verify` 为证）。  
+- **工业级 P0–P1**：可观测、配置与密钥、部署模型、安全、灾备等**起步文档**已落在 **`docs/ops-runbook.md`**、**`docs/event_topics.md`**（详见下表各条链接）。产线硬化（鉴权实现、真 Postgres、指标 exporter 等）仍可按路线图迭代。  
+- **Phase 2 全部门岗位**：依赖业务定稿与组织树增量，**不以岗数封顶**；新增岗时同步 **`shared/org_canonical.py`**、沙盒与 **`make spine`** 相关切片（若有）。  
+- **P2 开发者体验**：**`README`** 快速开始、**`make dev`**、事件契约 **`docs/event-contract-summary.md`**（权威仍为 **`event_topics.md`**）。
+
 ## 优先级图例
 
 | 标记 | 含义 |
@@ -60,7 +67,7 @@
 | **L2** | **可对账**：与台账/报表 **同粒度** 可核对；异常码、人工兜底与 Runbook 段落齐备 | **`production-inventory-v1`**、**`production-quality-v1`**、**`finance-ar-ap-v1`**、**`finance-trial-report-v1`**、**`warehouse-cycle-transfer-v1`** 等切片链上叶岗已达 L2（`summary.l2_reconcile` 与 **`docs/ops-runbook.md`**）；其余岗继续按切片抬升 |
 | **L3** | **可生产**：外部系统集成（超时/重试/幂等）、鉴权、监控与 SLO、回滚与灾备对齐 **`docs/ops-runbook.md`** | 按切片分批放行 |
 
-**执行原则**：**垂直切片优先于横向扩岗** —— 选一条端到端业务链（当前主干：**排产 → 物料需求 → 入库验收 → 库存管理 → 出库拣货**），先把链上 Skill **从 L0 抬到 L1/L2**，再复制到其他部门；避免大量 L0 堆叠却无法对账。**主干回归命令**：仓库根 **`make spine`**（见 **`docs/vertical-slices.md`**「官方回归路径」）。
+**执行原则**：**垂直切片优先于横向扩岗** —— 选一条端到端业务链（当前主干：**排产 → 物料需求 → 入库验收 → 库存管理 → 出库拣货**），先把链上 Skill **从 L0 抬到 L1/L2**，再复制到其他部门；避免大量 L0 堆叠却无法对账。**主干回归命令**：仓库根 **`make spine`**（见 **`docs/vertical-slices.md`**「官方回归路径」）。**L3 起步**：**production-inventory-v1** 链上 **排产 / 物料需求 / 入库验收 / 库存管理 / 出库拣货** 已支持可选 **`external_planned_units_url`**、**`external_raw_stock_url`**、**`external_received_qty_url`**、**`external_quantity_on_hand_url`**、**`external_picked_qty_url`**；**warehouse-cycle-transfer-v1** 补链上 **库存盘点 / 库内调拨** 已支持 **`external_counted_qty_url`**、**`external_available_at_source_url`**（GET + 重试/幂等/回退）。**`shared/integration_client`** 的 **`get_json_with_retries` / `merge_json_int_override`** 支持 **`extra_headers`**；链上各 L3 岗可选 **`payload.external_request_headers`**（`str→str`，如 **`Authorization`**，**`extra_headers_from_payload`**），生产环境宜由 Gateway 注入、勿把长期密钥写入持久化 payload。**production-quality-v1** 补链上 **质量检验 / 批次放行** 已支持 **`external_defect_units_url`**、**`external_qc_cleared_url`**；**finance-ar-ap-v1** / **finance-trial-report-v1** 上 **应收 / 应付 / 试算 / 报表快照** 已支持 **`external_receivable_total_url`**、**`external_payable_total_url`**、**`external_debit_total_url`**、**`external_credit_total_url`**、**`external_trial_cleared_url`**（**`merge_json_float_override`** 见 **`shared/integration_client.py`**），见 **`docs/vertical-slice-l3-integration.md`**。
 
 **推荐下一迭代提交顺序（可拆 PR）**：① **已实现**：`tests/test_zz_vertical_slice_production_inventory_chain.py`（`plan_provider` + `SkillCommandGateway` + `Orchestrator`，无 LLM）；Phase 2 岗位 Skill 通过 **`core.command_payload.effective_skill_payload`** 同时兼容 Orchestrator 的 `params` 包裹与沙盒扁平 `payload`。② **已实现（垂直切片 L1）**：链上 **排产 / 物料需求 / 入库 / 库存** 均带 **`rule_version`**；财务 **应收 / 应付**、仓储 **出库** 同步 L1；phase2 沙盒每岗 **5 条** + `tests/test_zz_golden_material_requirement.py` + `tests/test_zz_golden_phase2_rules.py`。③ **已实现**：**切片 ↔ 岗位** 单一来源 **`shared/vertical_slices.py`** + **`docs/vertical-slices.md`** + `tests/test_zz_vertical_slice_registry_contract.py`；CI 已加 **`core/*` 行覆盖率 ≥85%** 门禁。**Redis Pub/Sub 总线**（`RedisEventBus` + `create_event_bus`）已落地，见 **`docs/event_topics.md`**。**可观测最小集**：编排 / Gateway 关键路径日志带 **`zt_*` extra**；编排器写 **`zt_outcome`** / **`zt_duration_ms`**（目标级与每步）；**SkillCommandGateway** 写 **`execute_ok`** / **`execute_failed`** / **`resolve_ambiguous`** 及 **`zt_duration_ms`**；**`RedisEventBus`** 写 **`reader_started`** / **`publish_ok`**（DEBUG）/ **`payload_invalid`** / **`subscriber_failed`** / **`reader_stopped_error`**，并带 **`zt_bus_channel`** / **`zt_topic`** 等；内存 **`EventBus`** / **`EvolutionEngine`** / **`EvolutionPromotion`** 的 WARNING、EXCEPTION 路径已补 **`zt_*`**（见 **`docs/ops-runbook.md`**）。**`ZHIWEITONG_LOG_JSON`** 同文档。**覆盖率策略（当前）**：`core/*` + 快消 `skills/quick_consumption` 见 CI；Phase 2 各岗由沙盒单测门禁。**多实例 State** 见 **`docs/ops-runbook.md`**。
 
@@ -79,14 +86,24 @@
 
 以下不替代手册，但**工业级**通常需要，按 **P0 → P2** 排序：
 
-1. **P0 可观测**：结构化日志、指标（步骤耗时、错误率、总线堆积）、追踪 ID（`correlation_id` 全链路透传已部分具备）。
-2. **P0 配置与密钥**：环境分层（dev/stage/prod）、密钥不落盘、轮换策略。
-3. **P0 部署模型**：单进程 vs 多副本；EventBus 从内存队列迁 **Redis Pub/Sub**（手册已预留）的时机与契约。
-4. **P0 安全**：总线鉴权、敏感 topic、知识库与 State 的访问边界。
-5. **P1 灾备**：SQLite/Chroma 备份恢复演练；State 与知识库一致性说明（起步见 **`docs/ops-runbook.md`**）。
-6. **P2 开发者体验**：`README` 一键启动、Makefile/poetry 脚本、API/事件契约的 OpenAPI 或表格维护。
+1. **P0 可观测**：结构化日志、指标（步骤耗时、错误率、总线堆积）、追踪 ID（`correlation_id` 全链路透传已部分具备；**追踪拼接与日志衍生指标起步见 `docs/ops-runbook.md` §2「可观测 P0」**）。
+2. **P0 配置与密钥**：环境分层（dev/stage/prod）、密钥不落盘、轮换策略（**起步见 `docs/ops-runbook.md` §2「配置与密钥 P0」**；**`.env.example`** 含 `ZHIWEITONG_ENV` 占位说明）。
+3. **P0 部署模型**：单进程 vs 多副本；EventBus 从内存队列迁 **Redis Pub/Sub**（手册已预留）的时机与契约（**契约与切换条件见 `docs/event_topics.md`「部署模型」；运维核对清单见 `docs/ops-runbook.md` §2「部署模型 P0」**）。
+4. **P0 安全**：总线鉴权、敏感 topic、知识库与 State 的访问边界（**契约见 `docs/event_topics.md`「安全与访问边界」；运维清单见 `docs/ops-runbook.md` §2「安全 P0」**）。
+5. **P1 灾备**：SQLite/Chroma 备份恢复演练；State 与知识库一致性说明（起步与演练清单见 **`docs/ops-runbook.md` §5**）。
+6. **P2 开发者体验**：`README` 快速开始、**`make dev`**（install + spine）、事件契约表格 **`docs/event-contract-summary.md`**（无 HTTP OpenAPI；对外契约以总线 topic/信封为准）。
 
 ---
+
+## 推荐推进顺序（主体 → 流程 → 快消与运维）
+
+若同时关心 **快消板块**（**`skills/quick_consumption/`**）与 **运维/产线硬化**（**`docs/ops-runbook.md`**、路线图中的可观测/密钥/部署/安全/灾备等），仍建议按下述 **时间顺序** 推进，避免多线并行返工：
+
+1. **主体优先**：以 **`docs/vertical-slices.md`** 登记链与 **core / 总线** 为主干，用 **`make spine`**、**`make verify`** 客观收束；契约以 **`CLAUDE.md`**、**`docs/event_topics.md`** 为准（先改文档再改实现）。
+2. **流程固化**：单轮节奏见 **`docs/ralph-loop.md`**；进化审阅与落盘见 Phase 3 及 **`promote-preview`** / **`promote-apply`** 等既有流程，不另起一套「私人脚本」替代验收。
+3. **快消与运维后置、分里程碑完善**：快消岗业务加深与 **ops-runbook / 路线图 P0** 可在主体与流程跑顺后 **按里程碑迭代**，不必与垂直切片加深抢同一工期；细节仍回填本页表格与 **`docs/ops-runbook.md`**。
+
+与下节「建议执行顺序」互补：**本节**强调 **何时做哪一类事**；**下节**强调 **表格内的技术优先级与扩岗策略**。
 
 ## 建议执行顺序（专业但可执行）
 
@@ -99,11 +116,12 @@
 
 下列来自手册外工业级清单与架构预留，**单独排期**，不占用上表「状态」列的闭环定义：
 
-- 指标与总线堆积监控、追踪全链路强化。  
-- 环境分层（dev/stage/prod）与密钥轮换 SOP。  
-- 总线鉴权、敏感 topic、知识库与 State 的访问边界硬化。  
-- 灾备演练节奏与 RPO/RTO 目标文档化。  
-- OpenAPI / 事件契约的对外发布渠道。
+- 指标与总线堆积监控、追踪全链路强化（日志侧起步见 **`docs/ops-runbook.md` §2「可观测 P0」**）。  
+- 环境分层（dev/stage/prod）与密钥轮换 SOP（起步见 **`docs/ops-runbook.md` §2「配置与密钥 P0」**）。  
+- 多副本部署与 Redis 总线、State 方案（契约见 **`docs/event_topics.md`**「部署模型」；运维清单见 **`docs/ops-runbook.md` §2「部署模型 P0」**）。  
+- 总线鉴权、敏感 topic、知识库与 State 的访问边界硬化（起步见 **`docs/event_topics.md`「安全与访问边界」**、**`docs/ops-runbook.md` §2「安全 P0」**）。  
+- 灾备演练节奏与 RPO/RTO 目标文档化（起步见 **`docs/ops-runbook.md` §5.2**）。  
+- OpenAPI / 事件契约的对外发布渠道（当前以 **`docs/event-contract-summary.md`** + **`event_topics.md`** 为发布面；若将来暴露 REST，再另增 OpenAPI）。
 
 ---
 

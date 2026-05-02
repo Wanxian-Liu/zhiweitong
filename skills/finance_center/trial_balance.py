@@ -17,6 +17,7 @@ from core.skill_base import (
     SkillMeta,
     json_schema,
 )
+from shared.integration_client import extra_headers_from_payload, merge_json_float_override
 from shared.models import EventEnvelope
 from shared.slice_l2 import l2_reconcile_block
 
@@ -59,7 +60,13 @@ class TrialBalanceSkill(SkillBase):
             input_schema=json_schema(TrialBalanceInput),
             output_schema=json_schema(TrialBalanceOutput),
             required_input_fields=["correlation_id"],
-            optional_input_fields=["payload.debits", "payload.credits"],
+            optional_input_fields=[
+                "payload.debits",
+                "payload.credits",
+                "payload.external_debit_total_url",
+                "payload.external_credit_total_url",
+                "payload.external_request_headers",
+            ],
             error_codes=["E_FIN_TRIAL_INVALID_PAYLOAD", "W_TRIAL_IMBALANCE"],
         ),
         execution=SkillExecution(
@@ -90,6 +97,25 @@ class TrialBalanceSkill(SkillBase):
         credits = payload.get("credits")
         debit_total = round(float(sum(float(x) for x in debits)), 2) if isinstance(debits, list) else 0.0
         credit_total = round(float(sum(float(x) for x in credits)), 2) if isinstance(credits, list) else 0.0
+        ext_d = str(payload.get("external_debit_total_url") or "").strip()
+        ext_c = str(payload.get("external_credit_total_url") or "").strip()
+        hdrs = extra_headers_from_payload(payload)
+        debit_total, l3_debit = await merge_json_float_override(
+            ext_d,
+            correlation_id=req.correlation_id,
+            field="debit_total",
+            fallback=debit_total,
+            mode="fin_trial_debit_lookup",
+            extra_headers=hdrs,
+        )
+        credit_total, l3_credit = await merge_json_float_override(
+            ext_c,
+            correlation_id=req.correlation_id,
+            field="credit_total",
+            fallback=credit_total,
+            mode="fin_trial_credit_lookup",
+            extra_headers=hdrs,
+        )
         tb_balanced = debit_total == credit_total
 
         summary = {
@@ -110,6 +136,13 @@ class TrialBalanceSkill(SkillBase):
                 else None
             ),
         }
+        l3_merged: dict[str, Any] = {}
+        if l3_debit:
+            l3_merged["debit_total"] = l3_debit
+        if l3_credit:
+            l3_merged["credit_total"] = l3_credit
+        if l3_merged:
+            summary["l3_integration"] = l3_merged
         entity = f"{self.meta.org_path}/{self.meta.skill_id}/{req.correlation_id}"
         await self._state.save_state(
             entity,

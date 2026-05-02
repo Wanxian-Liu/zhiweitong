@@ -10,6 +10,14 @@
 
 **切片 ID**：`production-inventory-v1` —— 变更 core、总线契约或链上 Skill 时，**先跑通本条再合并**（比全量 `pytest` 更快，且覆盖端到端编排 + Gateway + State）。
 
+**L3 外部集成（可选）**：链上 **排产 / 物料需求 / 入库验收 / 库存管理 / 出库拣货** 分别支持 **`external_planned_units_url`**、**`external_raw_stock_url`**、**`external_received_qty_url`**、**`external_quantity_on_hand_url`**、**`external_picked_qty_url`**；各岗另可选 **`external_request_headers`**（`str→str`，如 **`Authorization`**）。重试/幂等见 **`docs/vertical-slice-l3-integration.md`**；默认演示参数**不**带上述字段，故 **`make spine`** 行为不变。
+
+**补链 `warehouse-cycle-transfer-v1`（可选 L3）**：**库存盘点 / 库内调拨** 分别支持 **`external_counted_qty_url`**、**`external_available_at_source_url`**，并同用 **`external_request_headers`**；默认 **`WH_CYCLE_TRANSFER_DEFAULT_PARAMS`** 不带上述字段，**`make spine`** 行为不变。
+
+**补链 `production-quality-v1`（可选 L3）**：**质量检验 / 批次放行** 分别支持 **`external_defect_units_url`**、**`external_qc_cleared_url`**（放行门闩 JSON 中 **`qc_cleared`** 为 **0 / 正整数**），并同用 **`external_request_headers`**；默认 **`PRODUCTION_QUALITY_DEFAULT_PARAMS`** 不带上述字段，**`make spine`** 行为不变。
+
+**切片 `finance-ar-ap-v1` / `finance-trial-report-v1`（可选 L3）**：**应收 / 应付** 分别支持 **`external_receivable_total_url`**、**`external_payable_total_url`**（JSON 金额 **`receivable_total`** / **`payable_total`**，2 位小数）；**试算平衡** 支持 **`external_debit_total_url`**、**`external_credit_total_url`**；**报表快照** 支持 **`external_trial_cleared_url`**（JSON **`trial_cleared`** 为 **0 / 正整数** 门闩）。均同用 **`external_request_headers`**；默认 **`FINANCE_AR_AP_DEFAULT_PARAMS`**、**`FINANCE_TRIAL_REPORT_DEFAULT_PARAMS`** 不带上述字段，**`make spine`** 行为不变。
+
 在仓库根目录执行：
 
 ```bash

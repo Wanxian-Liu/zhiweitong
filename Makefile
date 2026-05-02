@@ -2,13 +2,17 @@
 # 进化：`promote-preview` / `promote-apply`（默认 diff；WRITE=1 写盘 + 备份）
 # 主干回归：make spine — 垂直切片 E2E + 注册表契约（见 docs/vertical-slices.md）
 # 提交前：make verify — 全量 pytest + core 覆盖率门禁（对齐 CI，见 docs/ralph-loop.md）
-.PHONY: test spine verify install validate-skills-diff promote-preview promote-apply
+.PHONY: test spine verify install dev validate-skills-diff promote-preview promote-apply
 
 PYTHON ?= python3
 POETRY ?= poetry
 
 install:
 	$(POETRY) install --no-interaction
+
+# 本地开发/bootstrap：安装依赖后跑官方主干回归（无 LLM、无 Redis）
+dev: install spine
+	@echo "OK: dependencies + spine. Run 'make verify' before merge."
 
 test:
 	$(POETRY) run pytest tests/ -q --tb=short
