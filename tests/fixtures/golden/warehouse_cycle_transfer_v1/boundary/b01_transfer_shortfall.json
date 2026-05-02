@@ -1,0 +1,33 @@
+{
+  "case_id": "wh_ct_boundary_transfer_shortfall",
+  "vertical_slice": "warehouse-cycle-transfer-v1",
+  "kind": "boundary",
+  "step_index": 1,
+  "skill_id": "wh_stock_transfer",
+  "org_path": "/智维通/城市乳业/仓储物流/库内调拨",
+  "correlation_id": "golden-wh-ct-b1",
+  "params": {
+    "sku": "WH-CT-EDGE",
+    "from_location": "A-01",
+    "to_location": "B-02",
+    "quantity": 600,
+    "available_at_source": 500
+  },
+  "expected_subset": {
+    "ok": true,
+    "rule_version": "transfer-qty-availability-v1",
+    "sku": "WH-CT-EDGE",
+    "from_location": "A-01",
+    "to_location": "B-02",
+    "quantity": 600,
+    "available_at_source": 500,
+    "shortfall": 100,
+    "transfer_complete": false,
+    "summary": {
+      "l2_reconcile": {
+        "grain": "transfer_commit_snapshot"
+      },
+      "exception_code": "W_TRANSFER_SHORTFALL"
+    }
+  }
+}

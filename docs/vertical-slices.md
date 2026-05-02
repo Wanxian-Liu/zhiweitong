@@ -31,6 +31,7 @@ poetry run pytest \
   tests/test_zz_vertical_slice_production_inventory_chain.py \
   tests/test_zz_golden_production_inventory_v1_json.py \
   tests/test_zz_golden_finance_ar_ap_v1_json.py \
+  tests/test_zz_golden_warehouse_cycle_transfer_v1_json.py \
   tests/test_zz_vertical_slice_registry_contract.py \
   tests/test_zz_vertical_slice_finance_ar_ap_chain.py \
   tests/test_zz_vertical_slice_finance_registry_contract.py \
@@ -46,7 +47,7 @@ poetry run pytest \
 
 **期望现象**：
 
-- 当前共 **36** 条用例全部通过（**1** 条主链 E2E + **11** 条主链 L1 黄金 + **5** 条 **`finance-ar-ap-v1`** 黄金（**2** happy + **2** boundary + **1** 参数对齐）+ **10** 条注册表/参数契约 + **5** 条 `skill_py` 路径存在性 + 其余链 E2E）；黄金脱敏见 **`tests/fixtures/golden/production_inventory_v1/`**、**`tests/fixtures/golden/finance_ar_ap_v1/`**（各 **`boundary/`** 与 **`docs/ops-runbook.md`** 主链/财务 L2 码一致）。
+- 当前共 **41** 条用例全部通过（**1** 条主链 E2E + **11** 条主链 L1 黄金 + **5** 条 **`finance-ar-ap-v1`** 黄金 + **5** 条 **`warehouse-cycle-transfer-v1`** 黄金（各含 happy + **`boundary/`**）+ **10** 条注册表/参数契约 + **5** 条 `skill_py` 路径存在性 + 其余链 E2E）；黄金脱敏见 **`tests/fixtures/golden/production_inventory_v1/`**、**`finance_ar_ap_v1/`**、**`warehouse_cycle_transfer_v1/`**（与 **`docs/ops-runbook.md`** L2 码一致）。
 - 链式集成用例 `test_production_to_inventory_vertical_slice_e2e` 成功时：`GoalReport.ok is True`、**5** 步全部 `ok`，且每步 `skill_path` / `skill_id` / `summary.rule_version` 与下表及 `shared/vertical_slices.py` 一致；摘要断言覆盖 `planned_units`、`required_raw_qty`、`receipt_complete`、`reorder_suggested`、`pick_complete` 等。
 
 **不要求**：LLM、Redis、本机 `.env`（pytest 下 `ZHIWEITONG_SKIP_DOTENV=1`）。合并前仍建议本地或 CI 跑 **`make test`** 全量。
@@ -118,6 +119,8 @@ L1 黄金 JSON（happy + **`boundary/`** 行数不一致 → **`W_FIN_AR_LINE_MI
 默认演示参数见 `WH_CYCLE_TRANSFER_DEFAULT_PARAMS`（与 `tests/test_zz_vertical_slice_wh_cycle_transfer_chain.py` 内计划一致）。
 
 契约校验：`tests/test_zz_vertical_slice_wh_registry_contract.py`。
+
+L1 黄金 JSON（happy + **`boundary/`** 账实差异 → **`W_CYCLE_COUNT_VARIANCE`**、源量不足 → **`W_TRANSFER_SHORTFALL`**）：`tests/fixtures/golden/warehouse_cycle_transfer_v1/`、`tests/test_zz_golden_warehouse_cycle_transfer_v1_json.py`。
 
 ## L2（可对账）扩展
 

@@ -1,0 +1,29 @@
+{
+  "case_id": "wh_ct_boundary_cycle_variance",
+  "vertical_slice": "warehouse-cycle-transfer-v1",
+  "kind": "boundary",
+  "step_index": 0,
+  "skill_id": "wh_cycle_count",
+  "org_path": "/智维通/城市乳业/仓储物流/库存盘点",
+  "correlation_id": "golden-wh-ct-b0",
+  "params": {
+    "sku": "WH-CT-EDGE",
+    "book_qty": 500,
+    "counted_qty": 480
+  },
+  "expected_subset": {
+    "ok": true,
+    "rule_version": "cycle-count-variance-v1",
+    "sku": "WH-CT-EDGE",
+    "book_qty": 500,
+    "counted_qty": 480,
+    "variance_qty": -20,
+    "cycle_balanced": false,
+    "summary": {
+      "l2_reconcile": {
+        "grain": "cycle_count_snapshot"
+      },
+      "exception_code": "W_CYCLE_COUNT_VARIANCE"
+    }
+  }
+}

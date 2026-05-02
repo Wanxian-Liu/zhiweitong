@@ -1,0 +1,28 @@
+{
+  "case_id": "wh_ct_v1_step0_cycle",
+  "vertical_slice": "warehouse-cycle-transfer-v1",
+  "step_index": 0,
+  "skill_id": "wh_cycle_count",
+  "org_path": "/智维通/城市乳业/仓储物流/库存盘点",
+  "correlation_id": "golden-wh-ct-s0",
+  "params": {
+    "sku": "WH-CT-VS",
+    "book_qty": 500,
+    "counted_qty": 500
+  },
+  "expected_subset": {
+    "ok": true,
+    "rule_version": "cycle-count-variance-v1",
+    "sku": "WH-CT-VS",
+    "book_qty": 500,
+    "counted_qty": 500,
+    "variance_qty": 0,
+    "cycle_balanced": true,
+    "summary": {
+      "l2_reconcile": {
+        "grain": "cycle_count_snapshot"
+      },
+      "exception_code": null
+    }
+  }
+}
