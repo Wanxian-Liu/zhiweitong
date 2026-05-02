@@ -1,0 +1,26 @@
+{
+  "case_id": "fin_tr_boundary_report_blocked",
+  "vertical_slice": "finance-trial-report-v1",
+  "kind": "boundary",
+  "step_index": 1,
+  "skill_id": "fin_report_snapshot",
+  "org_path": "/智维通/城市乳业/财务中心/报表快照",
+  "correlation_id": "golden-fin-tr-b1",
+  "params": {
+    "period_id": "FY25-P04",
+    "trial_cleared": false
+  },
+  "expected_subset": {
+    "ok": true,
+    "rule_version": "fin-report-gate-v1",
+    "period_id": "FY25-P04",
+    "trial_cleared": false,
+    "report_publishable": false,
+    "summary": {
+      "l2_reconcile": {
+        "grain": "report_snapshot_gate"
+      },
+      "exception_code": "W_FIN_REPORT_BLOCKED"
+    }
+  }
+}

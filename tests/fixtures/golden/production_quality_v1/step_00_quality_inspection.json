@@ -1,0 +1,29 @@
+{
+  "case_id": "pq_v1_step0_qc",
+  "vertical_slice": "production-quality-v1",
+  "step_index": 0,
+  "skill_id": "prod_quality_inspection",
+  "org_path": "/智维通/城市乳业/生产中心/质量检验",
+  "correlation_id": "golden-pq-s0",
+  "params": {
+    "batch_id": "PQ-VS",
+    "units_inspected": 200,
+    "defect_units": 0,
+    "max_defect_units": 5
+  },
+  "expected_subset": {
+    "ok": true,
+    "rule_version": "qc-defect-threshold-v1",
+    "batch_id": "PQ-VS",
+    "units_inspected": 200,
+    "defect_units": 0,
+    "max_defect_units": 5,
+    "qc_pass": true,
+    "summary": {
+      "l2_reconcile": {
+        "grain": "qc_batch_snapshot"
+      },
+      "exception_code": null
+    }
+  }
+}

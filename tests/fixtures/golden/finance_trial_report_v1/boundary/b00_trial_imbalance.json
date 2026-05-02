@@ -1,0 +1,26 @@
+{
+  "case_id": "fin_tr_boundary_trial_imbalance",
+  "vertical_slice": "finance-trial-report-v1",
+  "kind": "boundary",
+  "step_index": 0,
+  "skill_id": "fin_trial_balance",
+  "org_path": "/智维通/城市乳业/财务中心/试算平衡",
+  "correlation_id": "golden-fin-tr-b0",
+  "params": {
+    "debits": [1000.0, 500.0],
+    "credits": [800.0, 600.0]
+  },
+  "expected_subset": {
+    "ok": true,
+    "rule_version": "fin-trial-balance-v1",
+    "debit_total": 1500.0,
+    "credit_total": 1400.0,
+    "tb_balanced": false,
+    "summary": {
+      "l2_reconcile": {
+        "grain": "trial_balance_snapshot"
+      },
+      "exception_code": "W_TRIAL_IMBALANCE"
+    }
+  }
+}

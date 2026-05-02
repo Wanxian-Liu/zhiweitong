@@ -1,0 +1,30 @@
+{
+  "case_id": "pq_boundary_qc_reject",
+  "vertical_slice": "production-quality-v1",
+  "kind": "boundary",
+  "step_index": 0,
+  "skill_id": "prod_quality_inspection",
+  "org_path": "/智维通/城市乳业/生产中心/质量检验",
+  "correlation_id": "golden-pq-b0",
+  "params": {
+    "batch_id": "PQ-EDGE",
+    "units_inspected": 200,
+    "defect_units": 8,
+    "max_defect_units": 5
+  },
+  "expected_subset": {
+    "ok": true,
+    "rule_version": "qc-defect-threshold-v1",
+    "batch_id": "PQ-EDGE",
+    "units_inspected": 200,
+    "defect_units": 8,
+    "max_defect_units": 5,
+    "qc_pass": false,
+    "summary": {
+      "l2_reconcile": {
+        "grain": "qc_batch_snapshot"
+      },
+      "exception_code": "W_QC_BATCH_REJECT"
+    }
+  }
+}

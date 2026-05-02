@@ -1,0 +1,26 @@
+{
+  "case_id": "pq_boundary_release_blocked",
+  "vertical_slice": "production-quality-v1",
+  "kind": "boundary",
+  "step_index": 1,
+  "skill_id": "prod_batch_release",
+  "org_path": "/智维通/城市乳业/生产中心/批次放行",
+  "correlation_id": "golden-pq-b1",
+  "params": {
+    "batch_id": "PQ-EDGE",
+    "qc_cleared": false
+  },
+  "expected_subset": {
+    "ok": true,
+    "rule_version": "batch-release-gate-v1",
+    "batch_id": "PQ-EDGE",
+    "qc_cleared": false,
+    "release_committed": false,
+    "summary": {
+      "l2_reconcile": {
+        "grain": "batch_release_snapshot"
+      },
+      "exception_code": "W_RELEASE_BLOCKED"
+    }
+  }
+}

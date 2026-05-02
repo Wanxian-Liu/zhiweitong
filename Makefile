@@ -23,6 +23,8 @@ spine:
 		tests/test_zz_golden_production_inventory_v1_json.py \
 		tests/test_zz_golden_finance_ar_ap_v1_json.py \
 		tests/test_zz_golden_warehouse_cycle_transfer_v1_json.py \
+		tests/test_zz_golden_finance_trial_report_v1_json.py \
+		tests/test_zz_golden_production_quality_v1_json.py \
 		tests/test_zz_vertical_slice_registry_contract.py \
 		tests/test_zz_vertical_slice_finance_ar_ap_chain.py \
 		tests/test_zz_vertical_slice_finance_registry_contract.py \
