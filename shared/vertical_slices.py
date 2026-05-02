@@ -5,7 +5,8 @@
 ``tests/test_zz_vertical_slice_finance_registry_contract.py``、
 ``tests/test_zz_vertical_slice_wh_registry_contract.py``、
 ``tests/test_zz_vertical_slice_production_quality_registry_contract.py``、
-``tests/test_zz_vertical_slice_finance_trial_registry_contract.py`` 校验。
+``tests/test_zz_vertical_slice_finance_trial_registry_contract.py``、
+``tests/test_zz_vertical_slice_skill_paths_contract.py`` 校验。
 
 新增切片时：在此追加 ``VerticalSliceStep``，并同步 ``docs/vertical-slices.md``。
 """

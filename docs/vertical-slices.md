@@ -38,12 +38,13 @@ poetry run pytest \
   tests/test_zz_vertical_slice_production_quality_registry_contract.py \
   tests/test_zz_vertical_slice_finance_trial_report_chain.py \
   tests/test_zz_vertical_slice_finance_trial_registry_contract.py \
+  tests/test_zz_vertical_slice_skill_paths_contract.py \
   -q --tb=short
 ```
 
 **期望现象**：
 
-- 当前共 **15** 条用例全部通过（**5** 条链式 E2E + **10** 条注册表/参数契约；含供应链、财务双链、仓储补链、生产补链）。
+- 当前共 **20** 条用例全部通过（**5** 条链式 E2E + **10** 条注册表/参数契约 + **5** 条 `skill_py` 路径存在性；含供应链、财务双链、仓储补链、生产补链）。
 - 链式集成用例 `test_production_to_inventory_vertical_slice_e2e` 成功时：`GoalReport.ok is True`、**5** 步全部 `ok`，且每步 `skill_path` / `skill_id` / `summary.rule_version` 与下表及 `shared/vertical_slices.py` 一致；摘要断言覆盖 `planned_units`、`required_raw_qty`、`receipt_complete`、`reorder_suggested`、`pick_complete` 等。
 
 **不要求**：LLM、Redis、本机 `.env`（pytest 下 `ZHIWEITONG_SKIP_DOTENV=1`）。合并前仍建议本地或 CI 跑 **`make test`** 全量。
@@ -121,6 +122,8 @@ poetry run pytest \
 ## 契约校验
 
 `tests/test_zz_vertical_slice_registry_contract.py`（供应链）、`tests/test_zz_vertical_slice_finance_registry_contract.py`（应收应付）、`tests/test_zz_vertical_slice_finance_trial_registry_contract.py`（试算报表）、`tests/test_zz_vertical_slice_wh_registry_contract.py`（仓储补链）、`tests/test_zz_vertical_slice_production_quality_registry_contract.py`（生产补链）在运行时比对本表与各 Skill 模块导出的 `ORG_PATH` / `SKILL_ID` / `RULE_VERSION`，漂移即失败。
+
+`tests/test_zz_vertical_slice_skill_paths_contract.py` 逐链断言 `shared/vertical_slices.py` 中每条 `VerticalSliceStep.skill_py` 在仓库根下为**已存在文件**，避免重命名 Skill 文件后 registry 仍指向旧路径。
 
 ## 修订流程
 
