@@ -30,6 +30,7 @@ make spine
 poetry run pytest \
   tests/test_zz_vertical_slice_production_inventory_chain.py \
   tests/test_zz_golden_production_inventory_v1_json.py \
+  tests/test_zz_production_inventory_l3_mock_http.py \
   tests/test_zz_golden_finance_ar_ap_v1_json.py \
   tests/test_zz_golden_warehouse_cycle_transfer_v1_json.py \
   tests/test_zz_golden_finance_trial_report_v1_json.py \
@@ -49,7 +50,7 @@ poetry run pytest \
 
 **期望现象**：
 
-- 当前共 **51** 条用例全部通过（**1** 条主链 E2E + **11** 条主链 L1 黄金 + **5** 条 **`finance-ar-ap-v1`** 黄金 + **5** 条 **`finance-trial-report-v1`** 黄金 + **5** 条 **`production-quality-v1`** 黄金 + **5** 条 **`warehouse-cycle-transfer-v1`** 黄金（各含 happy + **`boundary/`**）+ **10** 条注册表/参数契约 + **5** 条 `skill_py` 路径存在性 + 其余链 E2E）；黄金脱敏见 **`tests/fixtures/golden/production_inventory_v1/`**、**`finance_ar_ap_v1/`**、**`finance_trial_report_v1/`**、**`production_quality_v1/`**、**`warehouse_cycle_transfer_v1/`**（与 **`docs/ops-runbook.md`** L2 码一致）。
+- 当前共 **57** 条用例全部通过（**1** 条主链 E2E + **11** 条主链 L1 黄金 + **6** 条主链 **L3**（`httpx.MockTransport` + 真实 `get_json_with_retries`，见 **`tests/test_zz_production_inventory_l3_mock_http.py`**）+ **5** 条 **`finance-ar-ap-v1`** 黄金 + **5** 条 **`finance-trial-report-v1`** 黄金 + **5** 条 **`production-quality-v1`** 黄金 + **5** 条 **`warehouse-cycle-transfer-v1`** 黄金（各含 happy + **`boundary/`**）+ **10** 条注册表/参数契约 + **5** 条 `skill_py` 路径存在性 + 其余链 E2E）；黄金脱敏见 **`tests/fixtures/golden/production_inventory_v1/`**、**`finance_ar_ap_v1/`**、**`finance_trial_report_v1/`**、**`production_quality_v1/`**、**`warehouse_cycle_transfer_v1/`**（与 **`docs/ops-runbook.md`** L2 码一致）。
 - 链式集成用例 `test_production_to_inventory_vertical_slice_e2e` 成功时：`GoalReport.ok is True`、**5** 步全部 `ok`，且每步 `skill_path` / `skill_id` / `summary.rule_version` 与下表及 `shared/vertical_slices.py` 一致；摘要断言覆盖 `planned_units`、`required_raw_qty`、`receipt_complete`、`reorder_suggested`、`pick_complete` 等。
 
 **不要求**：LLM、Redis、本机 `.env`（pytest 下 `ZHIWEITONG_SKIP_DOTENV=1`）。合并前仍建议本地或 CI 跑 **`make test`** 全量。
@@ -75,6 +76,8 @@ poetry run pytest \
 | 4 | `/智维通/城市乳业/仓储物流/出库拣货` | `wh_outbound_picking` | `outbound-pick-qty-v1` | `pick` | `skills/warehouse_logistics/outbound_picking.py` |
 
 默认演示参数见 `PRODUCTION_INVENTORY_DEFAULT_PARAMS`（与上述集成测试内计划一致）。
+
+L3（可选 URL，**`httpx.MockTransport`** + 真实 `get_json_with_retries`）：`tests/test_zz_production_inventory_l3_mock_http.py`；约定见 **`docs/vertical-slice-l3-integration.md`**。
 
 ## `finance-ar-ap-v1` 逐步
 

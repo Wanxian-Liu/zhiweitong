@@ -21,6 +21,7 @@ spine:
 	$(POETRY) run pytest \
 		tests/test_zz_vertical_slice_production_inventory_chain.py \
 		tests/test_zz_golden_production_inventory_v1_json.py \
+		tests/test_zz_production_inventory_l3_mock_http.py \
 		tests/test_zz_golden_finance_ar_ap_v1_json.py \
 		tests/test_zz_golden_warehouse_cycle_transfer_v1_json.py \
 		tests/test_zz_golden_finance_trial_report_v1_json.py \

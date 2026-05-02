@@ -86,5 +86,6 @@
 ## 验证
 
 - 单元契约：`tests/test_integration_client.py`（重试/幂等、`merge_json_int_override`、`merge_json_float_override`、`extra_headers` / `Authorization`）
-- Skill 沙盒（mock 无网络）：`tests/test_phase2_department_skills.py` 内 **`test_production_scheduling_skill_sandbox`**、**`test_material_requirement_skill_sandbox`**、**`test_inbound_receiving_skill_sandbox`**、**`test_inventory_management_skill_sandbox`**、**`test_outbound_picking_skill_sandbox`**、**`test_cycle_count_skill_sandbox`**、**`test_stock_transfer_skill_sandbox`**、**`test_quality_inspection_skill_sandbox`**、**`test_batch_release_skill_sandbox`**、**`test_receivable_reconciliation_skill_sandbox`**、**`test_payable_reconciliation_skill_sandbox`**、**`test_trial_balance_skill_sandbox`**、**`test_report_snapshot_skill_sandbox`** 各含 L3 两条用例（在 `skill_factory` 内 patch **`shared.integration_client.get_json_with_retries`**）
-- 主干回归未改默认参数：仓库根 **`make spine`**
+- Skill 沙盒（`IntegrationGetResult` 假实现）：`tests/test_phase2_department_skills.py` 内各岗 sandbox 用例（patch **`get_json_with_retries`**）
+- **主线五步 L3 + 真实 HTTP 栈**：`tests/test_zz_production_inventory_l3_mock_http.py` — **`httpx.MockTransport`** 注入 **`AsyncClient`**，调用真实 **`get_json_with_retries`**，覆盖 **`production-inventory-v1`** 五步 **`external_*_url`** 与一条 **`external_request_headers`**；纳入 **`make spine`**
+- 主干回归未改默认参数：仓库根 **`make spine`**（黄金 JSON 仍不带 URL；L3 专测显式带 URL）
