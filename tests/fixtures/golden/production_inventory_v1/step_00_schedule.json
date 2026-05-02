@@ -1,0 +1,24 @@
+{
+  "case_id": "pi_v1_step0_schedule",
+  "vertical_slice": "production-inventory-v1",
+  "step_index": 0,
+  "skill_id": "prod_production_scheduling",
+  "org_path": "/智维通/城市乳业/生产中心/排产",
+  "correlation_id": "golden-pi-v1-s0",
+  "params": {
+    "demand_units": 100,
+    "line_id": "LINE-VS"
+  },
+  "expected_subset": {
+    "ok": true,
+    "rule_version": "sched-demand-to-plan-v1",
+    "planned_units": 100,
+    "line_id": "LINE-VS",
+    "summary": {
+      "l2_reconcile": {
+        "grain": "production_plan_snapshot"
+      },
+      "exception_code": null
+    }
+  }
+}

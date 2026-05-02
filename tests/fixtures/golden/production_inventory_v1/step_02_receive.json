@@ -1,0 +1,28 @@
+{
+  "case_id": "pi_v1_step2_receive",
+  "vertical_slice": "production-inventory-v1",
+  "step_index": 2,
+  "skill_id": "wh_inbound_receiving",
+  "org_path": "/智维通/城市乳业/仓储物流/入库验收",
+  "correlation_id": "golden-pi-v1-s2",
+  "params": {
+    "sku": "RAW-VS",
+    "ordered_qty": 200,
+    "received_qty": 200
+  },
+  "expected_subset": {
+    "ok": true,
+    "rule_version": "inbound-qty-match-v1",
+    "sku": "RAW-VS",
+    "ordered_qty": 200,
+    "received_qty": 200,
+    "shortfall": 0,
+    "receipt_complete": true,
+    "summary": {
+      "l2_reconcile": {
+        "grain": "warehouse_receipt_line"
+      },
+      "exception_code": null
+    }
+  }
+}
