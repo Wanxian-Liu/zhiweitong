@@ -1,0 +1,25 @@
+{
+  "case_id": "pi_v1_boundary_schedule_clamp",
+  "vertical_slice": "production-inventory-v1",
+  "kind": "boundary",
+  "step_index": 0,
+  "skill_id": "prod_production_scheduling",
+  "org_path": "/智维通/城市乳业/生产中心/排产",
+  "correlation_id": "golden-pi-v1-b0",
+  "params": {
+    "demand_units": -12,
+    "line_id": "LINE-EDGE"
+  },
+  "expected_subset": {
+    "ok": true,
+    "rule_version": "sched-demand-to-plan-v1",
+    "planned_units": 0,
+    "line_id": "LINE-EDGE",
+    "summary": {
+      "l2_reconcile": {
+        "grain": "production_plan_snapshot"
+      },
+      "exception_code": null
+    }
+  }
+}

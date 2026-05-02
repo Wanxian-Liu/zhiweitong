@@ -45,7 +45,7 @@ poetry run pytest \
 
 **期望现象**：
 
-- 当前共 **26** 条用例全部通过（**1** 条主链 E2E + **6** 条主链 L1 黄金 JSON/沙盒 + **10** 条注册表/参数契约 + **5** 条 `skill_py` 路径存在性 + 其余链 E2E；黄金脱敏文件见 **`tests/fixtures/golden/production_inventory_v1/*.json`**）。
+- 当前共 **31** 条用例全部通过（**1** 条主链 E2E + **11** 条主链 L1 黄金 JSON/沙盒：含 **5** 条 happy path + **5** 条边界/异常码 + **1** 条参数与 registry 对齐 + **10** 条注册表/参数契约 + **5** 条 `skill_py` 路径存在性 + 其余链 E2E）；黄金脱敏见 **`tests/fixtures/golden/production_inventory_v1/`**（**`boundary/`** 为欠料/短收/补货/拣货短少/负需求钳制）。
 - 链式集成用例 `test_production_to_inventory_vertical_slice_e2e` 成功时：`GoalReport.ok is True`、**5** 步全部 `ok`，且每步 `skill_path` / `skill_id` / `summary.rule_version` 与下表及 `shared/vertical_slices.py` 一致；摘要断言覆盖 `planned_units`、`required_raw_qty`、`receipt_complete`、`reorder_suggested`、`pick_complete` 等。
 
 **不要求**：LLM、Redis、本机 `.env`（pytest 下 `ZHIWEITONG_SKIP_DOTENV=1`）。合并前仍建议本地或 CI 跑 **`make test`** 全量。

@@ -126,3 +126,51 @@ def test_golden_pi_v1_sandbox_matches_fixture(fixture_path: Path) -> None:
         _assert_subset(actual, expected)
 
     asyncio.run(_run())
+
+
+_BOUNDARY_DIR = _FIXTURE_DIR / "boundary"
+
+
+@pytest.mark.parametrize(
+    "fixture_path",
+    sorted(_BOUNDARY_DIR.glob("*.json")),
+    ids=lambda p: p.stem,
+)
+def test_golden_pi_v1_boundary_sandbox_matches_fixture(fixture_path: Path) -> None:
+    """主链边界：欠料、短收、补货信号、拣货短少、需求负值钳制等（与 ``docs/ops-runbook.md`` L2 码一致）。"""
+    case = json.loads(fixture_path.read_text(encoding="utf-8"))
+    assert case.get("kind") == "boundary"
+    step = int(case["step_index"])
+    assert 0 <= step < len(_COVERAGE_MODULES)
+
+    async def _run() -> None:
+        rep = await run_sandbox(
+            [
+                _envelope(
+                    str(case["skill_id"]),
+                    str(case["org_path"]),
+                    str(case["correlation_id"]),
+                    dict(case["params"]),
+                ),
+            ],
+            skill_factory=_skill_factory(step),
+            coverage_skill_module=_COVERAGE_MODULES[step],
+            enforce_coverage=False,
+        )
+        assert rep.passed == 1 and rep.failed == 0
+        assert rep.cases[0].result is not None
+        actual = rep.cases[0].result
+        expected = _expected_from_case(case)
+        _assert_subset(actual, expected)
+        # 边界类告警应带人工兜底文案（排产钳制仍为正常路径，不设 manual）
+        summ = actual.get("summary") if isinstance(actual.get("summary"), dict) else {}
+        ex = summ.get("exception_code")
+        if ex in (
+            "W_MRP_NET_SHORTAGE",
+            "W_INBOUND_SHORTFALL",
+            "W_OUTBOUND_SHORTFALL",
+            "I_REORDER_SUGGESTED",
+        ):
+            assert summ.get("manual_handoff"), f"{ex} 应对应非空 manual_handoff"
+
+    asyncio.run(_run())

@@ -1,0 +1,27 @@
+{
+  "case_id": "pi_v1_boundary_reorder_signal",
+  "vertical_slice": "production-inventory-v1",
+  "kind": "boundary",
+  "step_index": 3,
+  "skill_id": "wh_inventory_management",
+  "org_path": "/智维通/城市乳业/仓储物流/库存管理",
+  "correlation_id": "golden-pi-v1-b3",
+  "params": {
+    "sku": "RAW-EDGE",
+    "quantity_on_hand": 40,
+    "reorder_threshold": 100
+  },
+  "expected_subset": {
+    "ok": true,
+    "rule_version": "inv-threshold-v1",
+    "sku": "RAW-EDGE",
+    "quantity_on_hand": 40,
+    "reorder_suggested": true,
+    "summary": {
+      "l2_reconcile": {
+        "grain": "sku_on_hand_snapshot"
+      },
+      "exception_code": "I_REORDER_SUGGESTED"
+    }
+  }
+}

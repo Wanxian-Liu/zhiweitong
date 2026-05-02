@@ -1,0 +1,32 @@
+{
+  "case_id": "pi_v1_boundary_mrp_shortage",
+  "vertical_slice": "production-inventory-v1",
+  "kind": "boundary",
+  "step_index": 1,
+  "skill_id": "prod_material_requirement",
+  "org_path": "/智维通/城市乳业/生产中心/物料需求",
+  "correlation_id": "golden-pi-v1-b1",
+  "params": {
+    "fg_sku": "FG-EDGE",
+    "planned_fg_units": 100,
+    "raw_per_fg": 2,
+    "raw_stock": 100
+  },
+  "expected_subset": {
+    "ok": true,
+    "rule_version": "mrp-single-level-v1",
+    "fg_sku": "FG-EDGE",
+    "planned_fg_units": 100,
+    "raw_per_fg": 2,
+    "raw_stock": 100,
+    "required_raw_qty": 200,
+    "shortage_qty": 100,
+    "mrp_feasible": false,
+    "summary": {
+      "l2_reconcile": {
+        "grain": "material_net_requirement"
+      },
+      "exception_code": "W_MRP_NET_SHORTAGE"
+    }
+  }
+}

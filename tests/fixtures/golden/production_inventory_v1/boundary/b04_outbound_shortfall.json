@@ -1,0 +1,29 @@
+{
+  "case_id": "pi_v1_boundary_pick_shortfall",
+  "vertical_slice": "production-inventory-v1",
+  "kind": "boundary",
+  "step_index": 4,
+  "skill_id": "wh_outbound_picking",
+  "org_path": "/智维通/城市乳业/仓储物流/出库拣货",
+  "correlation_id": "golden-pi-v1-b4",
+  "params": {
+    "sku": "RAW-EDGE",
+    "requested_qty": 80,
+    "picked_qty": 30
+  },
+  "expected_subset": {
+    "ok": true,
+    "rule_version": "outbound-pick-qty-v1",
+    "sku": "RAW-EDGE",
+    "requested_qty": 80,
+    "picked_qty": 30,
+    "shortfall": 50,
+    "pick_complete": false,
+    "summary": {
+      "l2_reconcile": {
+        "grain": "warehouse_pick_line"
+      },
+      "exception_code": "W_OUTBOUND_SHORTFALL"
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "case_id": "pi_v1_boundary_inbound_shortfall",
+  "vertical_slice": "production-inventory-v1",
+  "kind": "boundary",
+  "step_index": 2,
+  "skill_id": "wh_inbound_receiving",
+  "org_path": "/智维通/城市乳业/仓储物流/入库验收",
+  "correlation_id": "golden-pi-v1-b2",
+  "params": {
+    "sku": "RAW-EDGE",
+    "ordered_qty": 200,
+    "received_qty": 150
+  },
+  "expected_subset": {
+    "ok": true,
+    "rule_version": "inbound-qty-match-v1",
+    "sku": "RAW-EDGE",
+    "ordered_qty": 200,
+    "received_qty": 150,
+    "shortfall": 50,
+    "receipt_complete": false,
+    "summary": {
+      "l2_reconcile": {
+        "grain": "warehouse_receipt_line"
+      },
+      "exception_code": "W_INBOUND_SHORTFALL"
+    }
+  }
+}
