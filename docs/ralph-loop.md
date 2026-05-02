@@ -5,7 +5,7 @@
 ## 与 CLAUDE.md 的关系
 
 - **宪法**：根目录 **`CLAUDE.md`**（无状态 Skill、仅 Event Bus、`supervisor=ai_ceo`、`org_path` 前缀、先改 `docs/event_topics.md` 再改总线等）——**每轮开发前扫一眼，做完对照检查**。
-- **计划 backlog**：**`docs/handbook-gap-and-industrialization.md`** —— **Phase 0–3** 表格中优先级 **P2** 与 **Phase 2 横线扩岗** 为持续迭代；单轮任务可从 **P2**、**路线图** 或 **垂直切片加深** 中取**下一项**。封版范围内的 **「—」** 行不必再拆任务。
+- **计划 backlog**：**`docs/handbook-gap-and-industrialization.md`** —— 含 **「第一步：城市乳业基础岗位（大纲内、有上限）」** 清单与完成判定；**Phase 0–3** 表格中优先级 **P2** 与 **Phase 2 横线扩岗** 为持续迭代；单轮任务可从 **P2**、**路线图** 或 **垂直切片加深** 中取**下一项**。封版范围内的 **「—」** 行不必再拆任务。
 - **主体 → 流程 → 快消与运维**：时间维度上优先保证 **垂直切片 + core**（主体），再固化 **本文件单轮节奏 + promote 流程**；**快消板块**与 **运维硬化**（ops-runbook / 路线图 P0）宜 **分里程碑后置**，详见 **`docs/handbook-gap-and-industrialization.md`**「**推荐推进顺序（主体 → 流程 → 快消与运维）**」。
 
 ## 我困了 / 换会话时，能否「自动接着做」？
