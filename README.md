@@ -6,6 +6,7 @@
 - **旧原型（不继续维护本仓）**：`~/.openclaw/skills/zhihuitong` 等为历史路径，标识 `zhihuitong` 与拼音不一致，仅作迁移参考，见 `docs/LEGACY.md`。
 - **主仓库约定**：日常开发与写文档请在 **本 Git 仓库的 clone**（示例路径 **`~/projects/zhiweitong`**）中进行；OpenClaw 技能目录**不是**主源码树。约定说明见 **`CLAUDE.md`**「主仓库（真源）」。
 - **推进顺序**：优先 **主体**（垂直切片 + core）→ **流程**（`docs/ralph-loop.md`、promote）→ **快消与运维** 分里程碑；说明见 **`docs/handbook-gap-and-industrialization.md`**「**推荐推进顺序（主体 → 流程 → 快消与运维）**」。
+- **参与贡献**：PR 前命令与总线约定见 **`CONTRIBUTING.md`**。
 
 开发入口：`CLAUDE.md`、`docs/event_topics.md`；本地数据与备份见 **`docs/ops-runbook.md`**。  
 环境变量骨架：**`.env.example`**（复制为 `.env` 后填写，勿提交 `.env`）。  
@@ -25,6 +26,10 @@
 ## 主干回归（官方垂直切片）
 
 改 **core / 总线 / 链上 Skill** 时，先在仓库根执行 **`make spine`**（无 LLM、无 Redis）：端到端 **排产 → 物料 → 入库 → 库存** + 与 `shared/vertical_slices.py` 的契约对齐。命令与期望说明见 **`docs/vertical-slices.md`**「官方回归路径」。合并前建议 **`make verify`**（全量测试 + `core/*` 覆盖率 ≥85%，对齐 CI）；节奏说明见 **`docs/ralph-loop.md`**。
+
+## 故障排查（CI）
+
+- GitHub **Required checks** 若配置了名称，需与 **`.github/workflows/ci.yml`** 里 **job `test`** 上报的检查一致，否则 merge 前可能一直黄或误判；详见 **`CONTRIBUTING.md`**。
 
 ## CLI（摘要）
 

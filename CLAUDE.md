@@ -43,6 +43,13 @@
 - **CI**：合并前请保持 `.github/workflows/ci.yml` 通过；变更 `skills/**/*.py` 时 PR 会逐项 `zhiweitong validate`。  
 - **业务与阶段整理**：`~/.openclaw/memory-vault/data/projects/zhihuitong/文案汇辑.md`（定稿 v4）。  
 - **按模块生成代码**：`~/.openclaw/memory-vault/data/projects/zhihuitong/OpenCLAW-Cursor模块提示词手册.md` — 复制其中 **0.1 → …** 到 Cursor，并 `@` 本仓库根目录。
+- **贡献与 CI 约定**：根目录 **`CONTRIBUTING.md`**（clone、验证命令、总线文档优先、GitHub required check 名称）。
+
+## 与 Agent 协作（仓库偏好）
+
+- **默认**：任务边界清楚时，**连续执行**实现、测试与文档同步，**减少**「是否继续」类中途确认。  
+- **须先停下或征得确认**：破坏性操作（删生产数据、大范围 `git reset --hard` 等）、**未在 `docs/event_topics.md` 落地的总线/信封变更**、新增依赖或扩大网络暴露面、以及**没有跑过 `make verify`（或等价 CI）却宣称已完成**。  
+- **收束**：与 **`docs/ralph-loop.md`** 一致——合并前 **`make verify`**；日常可 **`make spine`** 做快速心跳。
 
 ## Cursor 开场（可复制）
 
