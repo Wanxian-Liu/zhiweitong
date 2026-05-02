@@ -101,7 +101,7 @@
 
 若同时关心 **快消板块**（**`skills/quick_consumption/`**）与 **运维/产线硬化**（**`docs/ops-runbook.md`**、路线图中的可观测/密钥/部署/安全/灾备等），仍建议按下述 **时间顺序** 推进，避免多线并行返工：
 
-1. **主体优先**：以 **`docs/vertical-slices.md`** 登记链与 **core / 总线** 为主干，用 **`make spine`**、**`make verify`** 客观收束；契约以 **`CLAUDE.md`**、**`docs/event_topics.md`** 为准（先改文档再改实现）。
+1. **主体优先**：以 **`docs/vertical-slices.md`** 登记链与 **core / 总线** 为主干，用 **`make spine`**、**`make verify`** 客观收束；契约以 **`CLAUDE.md`**、**`docs/event_topics.md`** 为准（先改文档再改实现）。**逐步拆单**见 **`docs/event-contract-summary.md`**「主体推进步骤」。
 2. **流程固化**：单轮节奏见 **`docs/ralph-loop.md`**；进化审阅与落盘见 Phase 3 及 **`promote-preview`** / **`promote-apply`** 等既有流程，不另起一套「私人脚本」替代验收。
 3. **快消与运维后置、分里程碑完善**：快消岗业务加深与 **ops-runbook / 路线图 P0** 可在主体与流程跑顺后 **按里程碑迭代**，不必与垂直切片加深抢同一工期；细节仍回填本页表格与 **`docs/ops-runbook.md`**。
 

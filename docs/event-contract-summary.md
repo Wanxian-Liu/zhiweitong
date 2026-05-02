@@ -31,6 +31,15 @@
 
 JSON 字符串：`{"t": "<topic>", "e": <event dict>}` — 见 **`core/redis_event_bus.py`** 与 **`event_topics.md`**「Redis 传输」。
 
+## 主体推进步骤（按顺序打勾）
+
+与 **`docs/handbook-gap-and-industrialization.md`**「推荐推进顺序」第 1 条一致；**不**替代 **`vertical-slices.md`** 与 **`event_topics.md`** 的权威细节。
+
+1. **垂直切片与注册表**：改链上叶岗、`skill_id`、`rule_version` 或编排步序时，先改 **`shared/vertical_slices.py`**，再同步 **`docs/vertical-slices.md`** 与相关 **`tests/test_zz_vertical_slice_*.py`**；合并前根目录 **`make spine`**。
+2. **总线 / 信封 / Redis 行为**：任何 topic、载荷或传输语义变更，**先改** **`docs/event_topics.md`**，再改 **`core/`**、**`shared/`**；本速查与权威不一致时，以 **`event_topics.md`** 为准并修正本文件。
+3. **组织树与叶岗路径**：新增或调整 **`org_path`** 时同步 **`shared/org_canonical.py`** 与契约测试（见 **`CONTRIBUTING.md`**）。
+4. **收束**：合入前 **`make verify`**（全量 pytest + **`core/*`** / **`skills/quick_consumption/*.py`** 覆盖率门禁）。
+
 ## 延伸阅读
 
 - **部署与安全**：`event_topics.md`（部署模型、安全与访问边界）

@@ -71,14 +71,6 @@
 - **Chroma / `KnowledgeStore`**：写入与检索须带合法 **`org_path`**（与组织树一致；未知路径拒绝等见 **`tests/test_knowledge_store.py`** 与 **`CLAUDE.md`**）。
 - **State（SQLite/未来 Postgres）**：由 **`StateManager`** 与连接串访问；库文件或实例权限、备份与加密遵循 **`docs/ops-runbook.md`**（配置与密钥、灾备）。
 
-## JSON 信封（建议）
+## JSON 信封（与实现对齐）
 
-每条 `event: dict` 至少包含：
-
-- `schema_version`
-- `correlation_id`
-- `org_path`
-- `skill_id`
-- `payload`
-
-（具体字段在 `shared/models.py` 落地后同步本文。）
+实现为 **`shared/models.py`** 的 **`EventEnvelope`**（Pydantic）：`schema_version` 默认 **`"1"`**，其余字段 **`correlation_id`**、**`org_path`**、**`skill_id`**、**`payload`**（`dict`，默认空）与下表一致。内存总线与 Redis 传输均承载同一形状的字典（Redis 见上文「Redis 传输」）。
